@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystica Occulta - Haute Spiritualité et Rituels Ancestraux</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=MedievalSharp&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
+        
+        :root {
+            --primary: #3a0ca3;
+            --secondary: #7209b7;
+            --accent: #f72585;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+        }
+        
+        body {
+            font-family: 'Merriweather', serif;
+            background-color: #0f0e17;
+            color: #e8e8e8;
+            scroll-behavior: smooth;
+        }
+        
+        .font-cinzel {
+            font-family: 'Cinzel Decorative', cursive;
+        }
+        
+        .font-medieval {
+            font-family: 'MedievalSharp', cursive;
+        }
+        
+        .bg-mystic {
+            background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
+        }
+        
+        .hero-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .ritual-card {
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ritual-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(247, 37, 133, 0.4);
+        }
+        
+        .category-icon {
+            transition: all 0.3s ease;
+        }
+        
+        .category-icon:hover {
+            transform: scale(1.2) rotate(10deg);
+            filter: drop-shadow(0 0 10px var(--accent));
+        }
+        
+        .testimonial-card {
+            background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .nav-link {
+            position: relative;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: var(--accent);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .btn-magic {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 15px rgba(247, 37, 133, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-magic:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(247, 37, 133, 0.6);
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(247, 37, 133, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0);
+            }
+        }
+        
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 10px rgba(247, 37, 133, 0.7);
+        }
+        
+        .candle-flicker {
+            animation: flicker 3s infinite alternate;
+        }
+        
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                filter: drop-shadow(0 0 10px rgba(247, 37, 133, 0.7));
+            }
+            20%, 24%, 55% {
+                filter: drop-shadow(0 0 5px rgba(247, 37, 133, 0.3));
+            }
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid var(--accent);
+            width: 80%;
+            max-width: 800px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(247, 37, 133, 0.5);
+            animation: modalFadeIn 0.3s;
+        }
+        
+        @keyframes modalFadeIn {
+            from {opacity: 0; transform: translateY(-50px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <!-- Header -->
+    <header class="fixed w-full z-50 bg-dark bg-opacity-90 backdrop-blur-sm border-b border-purple-900">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-900 to-pink-600 flex items-center justify-center">
+                    <i class="fas fa-eye text-white text-xl"></i>
+                </div>
+                <a href="#" class="font-cinzel text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">MYSTICA OCCULTA</a>
+            </div>
+            
+            <nav class="hidden md:flex space-x-8">
+                <a href="#home" class="nav-link text-gray-300 hover:text-white">Accueil</a>
+                <a href="#rituals" class="nav-link text-gray-300 hover:text-white">Rituels & Magie</a>
+                <a href="#vodoun" class="nav-link text-gray-300 hover:text-white">Vodoun</a>
+                <a href="#prosperity" class="nav-link text-gray-300 hover:text-white">Prospérité</a>
+                <a href="#love" class="nav-link text-gray-300 hover:text-white">Amour</a>
+                <a href="#shop" class="nav-link text-gray-300 hover:text-white">Boutique</a>
+                <a href="#testimonials" class="nav-link text-gray-300 hover:text-white">Témoignages</a>
+                <a href="#blog" class="nav-link text-gray-300 hover:text-white">Blog</a>
+            </nav>
+            
+            <div class="flex items-center space-x-4">
+                <a href="#contact" class="btn-magic px-4 py-2 rounded-full text-white font-medium hidden md:block">Consultation</a>
+                <button class="md:hidden text-gray-300 hover:text-white focus:outline-none" id="mobileMenuButton">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div class="md:hidden hidden absolute top-16 left-0 right-0 bg-dark p-4 border-t border-purple-900" id="mobileMenu">
+            <div class="flex flex-col space-y-4">
+                <a href="#home" class="text-gray-300 hover:text-white">Accueil</a>
+                <a href="#rituals" class="text-gray-300 hover:text-white">Rituels & Magie</a>
+                <a href="#vodoun" class="text-gray-300 hover:text-white">Vodoun</a>
+                <a href="#prosperity" class="text-gray-300 hover:text-white">Prospérité</a>
+                <a href="#love" class="text-gray-300 hover:text-white">Amour</a>
+                <a href="#shop" class="text-gray-300 hover:text-white">Boutique</a>
+                <a href="#testimonials" class="text-gray-300 hover:text-white">Témoignages</a>
+                <a href="#blog" class="text-gray-300 hover:text-white">Blog</a>
+                <a href="#contact" class="btn-magic px-4 py-2 rounded-full text-white font-medium text-center">Consultation</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="relative h-screen flex items-center justify-center bg-mystic overflow-hidden">
+        <div class="absolute inset-0 hero-overlay"></div>
+        <div class="absolute inset-0 flex items-center justify-center opacity-20">
+            <div class="w-64 h-64 rounded-full bg-purple-900 filter blur-3xl"></div>
+        </div>
+        
+        <div class="container mx-auto px-4 relative z-10 text-center">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="font-cinzel text-4xl md:text-6xl font-bold mb-6 text-white">
+                    <span class="glow-text">Transformez Votre Vie</span> <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Par Des Rituels Ancestraux</span>
+                </h1>
+                <p class="text-xl md:text-2xl mb-10 text-gray-300 max-w-3xl mx-auto">
+                    Découvrez la puissance des rituels magiques authentiques transmis par les grands maîtres depuis des siècles.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <a href="#rituals" class="btn-magic px-8 py-4 rounded-full text-white font-bold text-lg flex items-center justify-center space-x-2">
+                        <span>Explorer les Rituels</span>
+                        <i class="fas fa-arrow-down"></i>
+                    </a>
+                    <a href="#contact" class="px-8 py-4 rounded-full border-2 border-purple-600 text-white font-bold text-lg hover:bg-purple-900 transition duration-300 flex items-center justify-center space-x-2">
+                        <span>Consultation Privée</span>
+                        <i class="fas fa-star"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+            <a href="#rituals" class="text-white text-2xl">
+                <i class="fas fa-chevron-down"></i>
+            </a>
+        </div>
+        
+        <!-- Floating elements -->
+        <div class="absolute top-20 left-20 w-16 h-16 rounded-full bg-purple-800 opacity-20 floating"></div>
+        <div class="absolute bottom-1/4 right-32 w-24 h-24 rounded-full bg-pink-800 opacity-20 floating" style="animation-delay: 1s;"></div>
+        <div class="absolute top-1/3 right-1/4 w-20 h-20 rounded-full bg-indigo-800 opacity-20 floating" style="animation-delay: 2s;"></div>
+    </section>
+
+    <!-- Featured Rituals -->
+    <section id="rituals" class="py-20 bg-dark">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Rituels Puissants du Moment
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Ces rituels sélectionnés avec soin ont démontré une efficacité exceptionnelle pour nos clients.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Ritual 1 -->
+                <div class="ritual-card rounded-xl p-6 border border-purple-900">
+                    <div class="mb-6 relative">
+                        <div class="w-full h-48 rounded-lg bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+                            <i class="fas fa-moon text-6xl text-white candle-flicker"></i>
+                        </div>
+                        <div class="absolute -top-4 -right-4 bg-pink-600 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold">
+                            <span>NEW</span>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel text-2xl font-bold mb-3 text-white">Rituel du Miroir Noir</h3>
+                    <p class="text-gray-400 mb-4">
+                        Un rituel ancestral de protection et de domination utilisant les énergies lunaires pour créer un bouclier impénétrable.
+                    </p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-purple-400 font-bold">72H pour effets</span>
+                        <button onclick="openRitualModal('mirror')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            En savoir plus <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Ritual 2 -->
+                <div class="ritual-card rounded-xl p-6 border border-purple-900">
+                    <div class="mb-6">
+                        <div class="w-full h-48 rounded-lg bg-gradient-to-br from-yellow-900 to-yellow-600 flex items-center justify-center">
+                            <i class="fas fa-coins text-6xl text-white candle-flicker"></i>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel text-2xl font-bold mb-3 text-white">Pacte de Richesse Divine</h3>
+                    <p class="text-gray-400 mb-4">
+                        Invocation des forces cosmiques pour attirer l'abondance et ouvrir les portes de la prospérité dans votre vie.
+                    </p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-purple-400 font-bold">7 Jours</span>
+                        <button onclick="openRitualModal('wealth')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            En savoir plus <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Ritual 3 -->
+                <div class="ritual-card rounded-xl p-6 border border-purple-900">
+                    <div class="mb-6">
+                        <div class="w-full h-48 rounded-lg bg-gradient-to-br from-red-900 to-pink-700 flex items-center justify-center">
+                            <i class="fas fa-heart text-6xl text-white candle-flicker"></i>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel text-2xl font-bold mb-3 text-white">Retour Affectif en 72h</h3>
+                    <p class="text-gray-400 mb-4">
+                        Technique magique puissante pour ramener un être cher, réveiller les sentiments endormis et renforcer les liens.
+                    </p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-purple-400 font-bold">72H Garanti</span>
+                        <button onclick="openRitualModal('love')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            En savoir plus <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="openAllRituals()" class="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
+                    Voir tous les rituels <i class="fas fa-book-open ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="py-20 bg-gradient-to-b from-dark to-purple-900">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Nos Domaines d'Expertise
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Explorez les différentes branches de la spiritualité et de la magie que nous maîtrisons.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <!-- Category 1 -->
+                <a href="javascript:void(0)" onclick="openCategoryModal('salomon')" class="group">
+                    <div class="flex flex-col items-center text-center p-6 transition duration-300 hover:bg-purple-900 hover:bg-opacity-30 rounded-xl">
+                        <div class="w-20 h-20 bg-purple-900 rounded-full flex items-center justify-center mb-4 category-icon group-hover:bg-pink-700">
+                            <i class="fas fa-star text-3xl text-white"></i>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Magie de Salomon</h3>
+                        <p class="text-gray-400 text-sm">
+                            Scellés, talismans et commandements des anciens grimoires.
+                        </p>
+                    </div>
+                </a>
+                
+                <!-- Category 2 -->
+                <a href="javascript:void(0)" onclick="openCategoryModal('vodoun')" class="group">
+                    <div class="flex flex-col items-center text-center p-6 transition duration-300 hover:bg-purple-900 hover:bg-opacity-30 rounded-xl">
+                        <div class="w-20 h-20 bg-purple-900 rounded-full flex items-center justify-center mb-4 category-icon group-hover:bg-pink-700">
+                            <i class="fas fa-voodoo-doll text-3xl text-white"></i>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Vodoun Authentique</h3>
+                        <p class="text-gray-400 text-sm">
+                            Rituels ancestraux avec les divinités vaudou.
+                        </p>
+                    </div>
+                </a>
+                
+                <!-- Category 3 -->
+                <a href="javascript:void(0)" onclick="openCategoryModal('love')" class="group">
+                    <div class="flex flex-col items-center text-center p-6 transition duration-300 hover:bg-purple-900 hover:bg-opacity-30 rounded-xl">
+                        <div class="w-20 h-20 bg-purple-900 rounded-full flex items-center justify-center mb-4 category-icon group-hover:bg-pink-700">
+                            <i class="fas fa-heart text-3xl text-white"></i>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Amour & Retour</h3>
+                        <p class="text-gray-400 text-sm">
+                            Techniques pour attirer ou ramener l'être aimé.
+                        </p>
+                    </div>
+                </a>
+                
+                <!-- Category 4 -->
+                <a href="javascript:void(0)" onclick="openCategoryModal('prosperity')" class="group">
+                    <div class="flex flex-col items-center text-center p-6 transition duration-300 hover:bg-purple-900 hover:bg-opacity-30 rounded-xl">
+                        <div class="w-20 h-20 bg-purple-900 rounded-full flex items-center justify-center mb-4 category-icon group-hover:bg-pink-700">
+                            <i class="fas fa-coins text-3xl text-white"></i>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Prospérité Immédiate</h3>
+                        <p class="text-gray-400 text-sm">
+                            Rituels pour attirer richesse et succès.
+                        </p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Vodoun Section -->
+    <section id="vodoun" class="py-20 bg-dark">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+                    <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                        Rituels Vodoun Authentiques
+                    </h2>
+                    <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mb-6"></div>
+                    <p class="text-gray-400 mb-6">
+                        Découvrez les rituels vodoun transmis de génération en génération par les grands prêtres du Bénin. Ces pratiques sacrées permettent de communiquer directement avec les forces invisibles.
+                    </p>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-300">Rituels avec Mami Wata pour la beauté et la séduction</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-300">Invocation de Legba pour ouvrir les chemins</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-300">Pactes avec Ogoun pour la force et la protection</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-300">Rituels Egungun pour communiquer avec les ancêtres</span>
+                        </li>
+                    </ul>
+                    <button onclick="openCategoryModal('vodoun')" class="btn-magic px-6 py-3 rounded-full text-white font-medium inline-flex items-center">
+                        Explorer les Rituels Vodoun <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+                <div class="md:w-1/2 relative">
+                    <div class="relative z-10">
+                        <div class="w-full h-96 rounded-xl bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1589998059171-988d322b23dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Vodoun Ritual" class="w-full h-full object-cover opacity-70">
+                        </div>
+                    </div>
+                    <div class="absolute -bottom-5 -left-5 w-32 h-32 rounded-full bg-pink-800 opacity-20 z-0"></div>
+                    <div class="absolute -top-5 -right-5 w-24 h-24 rounded-full bg-purple-800 opacity-20 z-0"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prosperity Section -->
+    <section id="prosperity" class="py-20 bg-gradient-to-b from-purple-900 to-dark">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Rituels de Prospérité
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Ouvrez les portes de l'abondance et transformez votre réalité financière avec ces rituels puissants.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                <div class="order-2 md:order-1">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-purple-900 bg-opacity-50 rounded-lg p-6 border border-purple-800">
+                            <div class="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-hand-holding-usd text-white"></i>
+                            </div>
+                            <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Appel d'Argent</h3>
+                            <p class="text-gray-400 text-sm">
+                                Technique pour attirer des sommes importantes en peu de temps.
+                            </p>
+                        </div>
+                        <div class="bg-purple-900 bg-opacity-50 rounded-lg p-6 border border-purple-800">
+                            <div class="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-briefcase text-white"></i>
+                            </div>
+                            <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Succès Professionnel</h3>
+                            <p class="text-gray-400 text-sm">
+                                Rituel pour promotions, nouveaux clients ou business florissant.
+                            </p>
+                        </div>
+                        <div class="bg-purple-900 bg-opacity-50 rounded-lg p-6 border border-purple-800">
+                            <div class="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-gem text-white"></i>
+                            </div>
+                            <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Talismans d'Abondance</h3>
+                            <p class="text-gray-400 text-sm">
+                                Objets chargés pour une prospérité continue.
+                            </p>
+                        </div>
+                        <div class="bg-purple-900 bg-opacity-50 rounded-lg p-6 border border-purple-800">
+                            <div class="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-piggy-bank text-white"></i>
+                            </div>
+                            <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Dettes Effacées</h3>
+                            <p class="text-gray-400 text-sm">
+                                Rituel pour éliminer les dettes et obligations financières.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-1 md:order-2">
+                    <h3 class="font-cinzel text-2xl md:text-3xl font-bold mb-4 text-white">
+                        Transformez Votre Situation Financière
+                    </h3>
+                    <p class="text-gray-400 mb-6">
+                        Nos rituels de prospérité agissent directement sur les énergies qui gouvernent la matière. En alignant votre vibration avec celle de l'abondance, vous devenez un aimant à opportunités.
+                    </p>
+                    <div class="mb-6">
+                        <div class="flex items-center mb-2">
+                            <div class="w-4 h-4 bg-pink-500 rounded-full mr-3"></div>
+                            <span class="text-gray-300 font-medium">Résultats visibles en 7 à 21 jours</span>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <div class="w-4 h-4 bg-pink-500 rounded-full mr-3"></div>
+                            <span class="text-gray-300 font-medium">Techniques adaptées à votre situation</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-pink-500 rounded-full mr-3"></div>
+                            <span class="text-gray-300 font-medium">Accompagnement personnalisé</span>
+                        </div>
+                    </div>
+                    <button onclick="openCategoryModal('prosperity')" class="btn-magic px-6 py-3 rounded-full text-white font-medium inline-flex items-center">
+                        Découvrir les Rituels <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Love Section -->
+    <section id="love" class="py-20 bg-dark">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+                    <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                        Magie de l'Amour
+                    </h2>
+                    <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mb-6"></div>
+                    <p class="text-gray-400 mb-6">
+                        Nos rituels amoureux sont parmi les plus puissants qui existent. Que ce soit pour attirer un nouvel amour, ramener un être cher ou renforcer une relation existante, nous avons la solution magique adaptée.
+                    </p>
+                    
+                    <div class="mb-8">
+                        <div class="flex items-start mb-4">
+                            <div class="bg-pink-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                <i class="fas fa-heart text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-cinzel text-xl font-bold text-white mb-1">Retour Affectif</h4>
+                                <p class="text-gray-400">
+                                    Techniques pour faire revenir un ex, réveiller des sentiments ou briser une influence extérieure.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start mb-4">
+                            <div class="bg-pink-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                <i class="fas fa-kiss-wink-heart text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-cinzel text-xl font-bold text-white mb-1">Attraction Sexuelle</h4>
+                                <p class="text-gray-400">
+                                    Rituels pour augmenter votre pouvoir de séduction et créer un désir irrésistible.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-pink-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                <i class="fas fa-rings-wedding text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-cinzel text-xl font-bold text-white mb-1">Harmonie Conjugale</h4>
+                                <p class="text-gray-400">
+                                    Solutions pour apaiser les conflits et renforcer les liens dans un couple.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="openCategoryModal('love')" class="btn-magic px-6 py-3 rounded-full text-white font-medium inline-flex items-center">
+                        Solutions d'Amour <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+                
+                <div class="md:w-1/2 relative">
+                    <div class="relative z-10">
+                        <div class="w-full h-96 rounded-xl bg-gradient-to-br from-pink-900 to-purple-900 flex items-center justify-center overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Love Magic" class="w-full h-full object-cover opacity-70">
+                        </div>
+                    </div>
+                    <div class="absolute -bottom-5 -left-5 w-32 h-32 rounded-full bg-pink-800 opacity-20 z-0"></div>
+                    <div class="absolute -top-5 -right-5 w-24 h-24 rounded-full bg-purple-800 opacity-20 z-0"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Section -->
+    <section id="blog" class="py-20 bg-gradient-to-b from-dark to-purple-900">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Blog Spirituel
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Découvrez nos articles sur les mystères de la spiritualité et les techniques occultes.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Blog Post 1 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+                        <i class="fas fa-moon text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center text-sm text-gray-500 mb-3">
+                            <span><i class="far fa-calendar mr-1"></i> 15 juin 2023</span>
+                            <span class="mx-2">•</span>
+                            <span><i class="far fa-clock mr-1"></i> 5 min</span>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Les Rituels Lunaires: Maximiser leur Puissance</h3>
+                        <p class="text-gray-400 mb-4">
+                            Découvrez comment synchroniser vos rituels avec les phases de la lune pour amplifier leurs effets...
+                        </p>
+                        <button onclick="openBlogModal('moon')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            Lire l'article <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Blog Post 2 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-yellow-900 to-yellow-700 flex items-center justify-center">
+                        <i class="fas fa-coins text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center text-sm text-gray-500 mb-3">
+                            <span><i class="far fa-calendar mr-1"></i> 2 juin 2023</span>
+                            <span class="mx-2">•</span>
+                            <span><i class="far fa-clock mr-1"></i> 7 min</span>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Les 7 Lois de l'Abondance Spirituelle</h3>
+                        <p class="text-gray-400 mb-4">
+                            Explorez les principes universels qui gouvernent la circulation de l'abondance dans votre vie...
+                        </p>
+                        <button onclick="openBlogModal('abundance')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            Lire l'article <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Blog Post 3 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-red-900 to-pink-800 flex items-center justify-center">
+                        <i class="fas fa-heart text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center text-sm text-gray-500 mb-3">
+                            <span><i class="far fa-calendar mr-1"></i> 20 mai 2023</span>
+                            <span class="mx-2">•</span>
+                            <span><i class="far fa-clock mr-1"></i> 6 min</span>
+                        </div>
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Les Cordes Énergétiques en Magie d'Amour</h3>
+                        <p class="text-gray-400 mb-4">
+                            Comprenez comment les liens invisibles entre les âmes peuvent être renforcés ou libérés...
+                        </p>
+                        <button onclick="openBlogModal('love-energy')" class="text-pink-500 hover:text-pink-300 flex items-center">
+                            Lire l'article <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="openAllBlogPosts()" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
+                    Voir tous les articles <i class="fas fa-book-open ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-20 bg-gradient-to-b from-purple-900 to-dark">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Témoignages Puissants
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Découvrez les transformations vécues par ceux qui ont fait confiance à nos rituels.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="testimonial-card rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold mr-4">
+                            S.K
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white">Sophie K.</h4>
+                            <div class="flex text-yellow-400 text-sm">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-gray-300 italic mb-4">
+                        "Après 3 ans de séparation, mon ex est revenu 8 jours après le rituel. Il a complètement changé d'attitude et nous sommes plus heureux que jamais. Merci du fond du cœur."
+                    </p>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-2"></i> 15 mars 2023 - Rituel de retour affectif
+                    </div>
+                </div>
+                
+                <!-- Testimonial 2 -->
+                <div class="testimonial-card rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold mr-4">
+                            M.D
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white">Marc D.</h4>
+                            <div class="flex text-yellow-400 text-sm">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-gray-300 italic mb-4">
+                        "Le rituel de prospérité a littéralement transformé ma vie. J'ai obtenu une promotion inattendue, puis gagné à la loterie 2 semaines plus tard. Je recommande à 100%."
+                    </p>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-2"></i> 2 février 2023 - Rituel de richesse
+                    </div>
+                </div>
+                
+                <!-- Testimonial 3 -->
+                <div class="testimonial-card rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold mr-4">
+                            A.L
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white">Amélie L.</h4>
+                            <div class="flex text-yellow-400 text-sm">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-gray-300 italic mb-4">
+                        "Le rituel de protection a sauvé ma vie. J'ai échappé à un grave accident de voiture dans des circonstances inexplicables. Je sens une présence bienveillante autour de moi depuis."
+                    </p>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-2"></i> 10 janvier 2023 - Rituel de protection
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="openAllTestimonials()" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
+                    Voir plus de témoignages <i class="fas fa-comments ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shop Section -->
+    <section id="shop" class="py-20 bg-dark">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Boutique Ésotérique
+                </h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-6"></div>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Découvrez nos objets magiques chargés d'énergie pour amplifier vos rituels.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                <!-- Product 1 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="relative">
+                        <div class="w-full h-48 bg-gradient-to-br from-red-900 to-red-700 flex items-center justify-center">
+                            <i class="fas fa-fire text-6xl text-white candle-flicker"></i>
+                        </div>
+                        <div class="absolute top-3 right-3 bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded">
+                            BESTSELLER
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Bougie Rouge Passion</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Bougie chargée pour les rituels d'amour et de passion.
+                        </p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-pink-500 font-bold">29€</span>
+                            <button onclick="addToCart('Bougie Rouge Passion', 29)" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                <i class="fas fa-shopping-cart mr-1"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product 2 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-yellow-900 to-yellow-700 flex items-center justify-center">
+                        <i class="fas fa-coins text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Talisman de Prospérité</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Pentacle chargé pour attirer richesse et opportunités.
+                        </p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-pink-500 font-bold">49€</span>
+                            <button onclick="addToCart('Talisman de Prospérité', 49)" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                <i class="fas fa-shopping-cart mr-1"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product 3 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-purple-900 to-purple-700 flex items-center justify-center">
+                        <i class="fas fa-eye text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Miroir Noir Magique</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Outil essentiel pour la divination et la protection.
+                        </p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-pink-500 font-bold">79€</span>
+                            <button onclick="addToCart('Miroir Noir Magique', 79)" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                <i class="fas fa-shopping-cart mr-1"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product 4 -->
+                <div class="ritual-card rounded-xl overflow-hidden">
+                    <div class="w-full h-48 bg-gradient-to-br from-green-900 to-green-700 flex items-center justify-center">
+                        <i class="fas fa-leaf text-6xl text-white candle-flicker"></i>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Encens Purification</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Mélange sacré pour nettoyer les énergies négatives.
+                        </p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-pink-500 font-bold">24€</span>
+                            <button onclick="addToCart('Encens Purification', 24)" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                <i class="fas fa-shopping-cart mr-1"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="openShop()" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
+                    Visiter la Boutique <i class="fas fa-store ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Consultation Section -->
+    <section id="contact" class="py-20 bg-gradient-to-b from-dark to-purple-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto bg-gradient-to-br from-purple-900 to-dark rounded-xl shadow-2xl overflow-hidden border border-purple-800">
+                <div class="md:flex">
+                    <div class="md:w-1/2 bg-purple-900 bg-opacity-50 p-10 flex flex-col justify-center">
+                        <h2 class="font-cinzel text-3xl md:text-4xl font-bold mb-6 text-white">
+                            Consultation Privée
+                        </h2>
+                        <div class="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mb-6"></div>
+                        <p class="text-gray-300 mb-6">
+                            Réservez une consultation personnalisée avec notre grand maître spirituel pour une analyse précise de votre situation et des solutions sur mesure.
+                        </p>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-start">
+                                <div class="bg-pink-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                <span class="text-gray-300">Diagnostic énergétique complet</span>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="bg-pink-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                <span class="text-gray-300">Rituel personnalisé selon vos besoins</span>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="bg-pink-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1 mr-3">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                                <span class="text-gray-300">Suivi pendant 30 jours</span>
+                            </li>
+                        </ul>
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-pink-600 rounded-full w-14 h-14 flex items-center justify-center pulse">
+                                <i class="fas fa-phone-alt text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Appelez-nous maintenant</div>
+                                <div class="text-white font-bold text-xl">+33 6 12 34 56 78</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:w-1/2 p-10">
+                        <h3 class="font-cinzel text-2xl font-bold mb-6 text-white text-center">
+                            Prendre Rendez-vous
+                        </h3>
+                        <form id="contactForm" class="space-y-4">
+                            <div>
+                                <label for="name" class="block text-gray-300 mb-2">Votre Nom</label>
+                                <input type="text" id="name" name="name" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-gray-300 mb-2">Votre Email</label>
+                                <input type="email" id="email" name="email" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre email">
+                            </div>
+                            <div>
+                                <label for="phone" class="block text-gray-300 mb-2">Votre Téléphone</label>
+                                <input type="tel" id="phone" name="phone" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre numéro">
+                            </div>
+                            <div>
+                                <label for="subject" class="block text-gray-300 mb-2">Sujet de Consultation</label>
+                                <select id="subject" name="subject" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300">
+                                    <option value="">Sélectionnez un sujet</option>
+                                    <option value="love">Amour & Relations</option>
+                                    <option value="money">Prospérité & Richesse</option>
+                                    <option value="protection">Protection & Purification</option>
+                                    <option value="other">Autre</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="message" class="block text-gray-300 mb-2">Votre Message</label>
+                                <textarea id="message" name="message" rows="3" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Décrivez votre situation"></textarea>
+                            </div>
+                            <button type="submit" class="w-full btn-magic px-6 py-4 rounded-full text-white font-bold text-lg mt-6">
+                                Envoyer la Demande <i class="fas fa-paper-plane ml-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark border-t border-purple-900 pt-12 pb-8">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-900 to-pink-600 flex items-center justify-center">
+                            <i class="fas fa-eye text-white text-xl"></i>
+                        </div>
+                        <a href="#" class="font-cinzel text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">MYSTICA OCCULTA</a>
+                    </div>
+                    <p class="text-gray-400 mb-4">
+                        Haute spiritualité et rituels ancestraux pour transformer votre vie.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-pink-500 transition duration-300">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-pink-500 transition duration-300">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-pink-500 transition duration-300">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-pink-500 transition duration-300">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-cinzel text-xl font-bold text-white mb-4">Rituels</h3>
+                    <ul class="space-y-2">
+                        <li><a href="javascript:void(0)" onclick="openCategoryModal('salomon')" class="text-gray-400 hover:text-pink-500 transition duration-300">Magie de Salomon</a></li>
+                        <li><a href="javascript:void(0)" onclick="openCategoryModal('vodoun')" class="text-gray-400 hover:text-pink-500 transition duration-300">Rituels Vodoun</a></li>
+                        <li><a href="javascript:void(0)" onclick="openCategoryModal('love')" class="text-gray-400 hover:text-pink-500 transition duration-300">Retour Affectif</a></li>
+                        <li><a href="javascript:void(0)" onclick="openCategoryModal('prosperity')" class="text-gray-400 hover:text-pink-500 transition duration-300">Prospérité</a></li>
+                        <li><a href="javascript:void(0)" onclick="openCategoryModal('protection')" class="text-gray-400 hover:text-pink-500 transition duration-300">Protection</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-cinzel text-xl font-bold text-white mb-4">Boutique</h3>
+                    <ul class="space-y-2">
+                        <li><a href="javascript:void(0)" onclick="openShopCategory('candles')" class="text-gray-400 hover:text-pink-500 transition duration-300">Bougies Magiques</a></li>
+                        <li><a href="javascript:void(0)" onclick="openShopCategory('talismans')" class="text-gray-400 hover:text-pink-500 transition duration-300">Talismans</a></li>
+                        <li><a href="javascript:void(0)" onclick="openShopCategory('incense')" class="text-gray-400 hover:text-pink-500 transition duration-300">Encens</a></li>
+                        <li><a href="javascript:void(0)" onclick="openShopCategory('books')" class="text-gray-400 hover:text-pink-500 transition duration-300">Livres Rares</a></li>
+                        <li><a href="javascript:void(0)" onclick="openShopCategory('kits')" class="text-gray-400 hover:text-pink-500 transition duration-300">Kits Complets</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-cinzel text-xl font-bold text-white mb-4">Contact</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-400">123 Rue Mystique, Paris</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-phone-alt text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-400">+33 6 12 34 56 78</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-envelope text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-400">contact@mystica-occulta.com</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-clock text-pink-500 mt-1 mr-3"></i>
+                            <span class="text-gray-400">Lun-Ven: 10h-18h</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-purple-900 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-500 text-sm mb-4 md:mb-0">
+                        © 2023 Mystica Occulta. Tous droits réservés.
+                    </p>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-500 hover:text-pink-500 text-sm transition duration-300">Mentions légales</a>
+                        <a href="#" class="text-gray-500 hover:text-pink-500 text-sm transition duration-300">Politique de confidentialité</a>
+                        <a href="#" class="text-gray-500 hover:text-pink-500 text-sm transition duration-300">CGV</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Float Button -->
+    <a href="https://wa.me/33612345678" target="_blank" class="fixed bottom-6 right-6 bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg hover:bg-green-700 transition duration-300 z-50">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- Shopping Cart -->
+    <div id="cart" class="fixed bottom-24 right-6 bg-purple-900 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg hover:bg-purple-700 transition duration-300 z-50 cursor-pointer" onclick="openCartModal()">
+        <i class="fas fa-shopping-cart"></i>
+        <span id="cart-count" class="absolute -top-2 -right-2 bg-pink-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">0</span>
+    </div>
+
+    <!-- Modals -->
+    <div id="ritualModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('ritualModal')">&times;</span>
+            <div id="ritualModalContent">
+                <!-- Content will be loaded here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('categoryModal')">&times;</span>
+            <div id="categoryModalContent">
+                <!-- Content will be loaded here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <div id="blogModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('blogModal')">&times;</span>
+            <div id="blogModalContent">
+                <!-- Content will be loaded here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('cartModal')">&times;</span>
+            <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                Votre Panier
+            </h2>
+            <div id="cartItems" class="mb-6">
+                <!-- Cart items will be loaded here -->
+                <p class="text-gray-400">Votre panier est vide</p>
+            </div>
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-xl font-bold text-white">Total:</span>
+                <span id="cartTotal" class="text-xl font-bold text-pink-500">0€</span>
+            </div>
+            <button onclick="checkout()" class="w-full btn-magic px-6 py-3 rounded-full text-white font-bold text-lg">
+                Passer la commande <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobileMenuButton').addEventListener('click', function() {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    if (!document.getElementById('mobileMenu').classList.contains('hidden')) {
+                        document.getElementById('mobileMenu').classList.add('hidden');
+                    }
+                }
+            });
+        });
+
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Ritual modal functions
+        function openRitualModal(ritualId) {
+            // Here you would load content based on the ritual ID
+            let content = '';
+            
+            if (ritualId === 'mirror') {
+                content = `
+                    <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                        Rituel du Miroir Noir
+                    </h2>
+                    <div class="mb-6">
+                        <img src="https://images.unsplash.com/photo-1590853566724-cb3f1083f8da?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Rituel du Miroir Noir" class="w-full h-64 object-cover rounded-lg">
+                    </div>
+                    <p class="text-gray-300 mb-4">
+                        Le Rituel du Miroir Noir est l'un des plus puissants rituels de protection et de domination. Utilisant les énergies lunaires, ce rituel crée un bouclier impénétrable autour de vous et vous permet de renvoyer toute négativité vers son expéditeur.
+                    </p>
+                    <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Ce rituel est recommandé pour:</h3>
+                    <ul class="list-disc pl-5 mb-6 text-gray-300 space-y-2">
+                        <li>Se protéger contre la magie noire et les attaques psychiques</li>
+                        <li>Renvoyer les énergies négatives à leur source</li>
+                        <li>Créer une barrière énergétique autour de vous et vos proches</li>
+                        <li>Dominer dans des situations de conflit ou de compétition</li>
+                    </ul>
+                    <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-6">
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Détails du rituel:</h3>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-clock text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Durée: 72 heures</span>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-moon text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Période: Pendant la lune noire</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Efficacité: Résultats visibles en 3-7 jours</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-2xl font-bold text-pink-500">199€</span>
+                        <button onclick="requestRitual('Rituel du Miroir Noir')" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
+                            Demander ce rituel
+                        </button>
+                    </div>
+                `;
+            } else if (ritualId === 'wealth') {
+                content = `
+                    <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                        Pacte de Richesse Divine
+                    </h2>
+                    <div class="mb-6">
+                        <img src="https://images.unsplash.com/photo-1565514020179-026b92b4a5b0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Pacte de Richesse Divine" class="w-full h-64 object-cover rounded-lg">
+                    </div>
+                    <p class="text-gray-300 mb-4">
+                        Le Pacte de Richesse Divine est un rituel ancestral qui invoque les forces cosmiques pour attirer l'abondance et ouvrir les portes de la prospérité dans votre vie. Ce rituel crée un canal énergétique permanent entre vous et les sources universelles de richesse.
+                    </p>
+                    <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Ce rituel est recommandé pour:</h3>
+                    <ul class="list-disc pl-5 mb-6 text-gray-300 space-y-2">
+                        <li>Attirer des opportunités financières inattendues</li>
+                        <li>Débloquer les obstacles à votre prospérité</li>
+                        <li>Multiplier vos sources de revenus</li>
+                        <li>Résoudre des problèmes financiers urgents</li>
+                    </ul>
+                    <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-6">
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Détails du rituel:</h3>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-clock text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Durée: 7 jours</span>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-moon text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Période: Pendant la lune croissante</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Efficacité: Résultats visibles en 7-21 jours</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-2xl font-bold text-pink-500">249€</span>
+                        <button onclick="requestRitual('Pacte de Richesse Divine')" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
+                            Demander ce rituel
+                        </button>
+                    </div>
+                `;
+            } else if (ritualId === 'love') {
+                content = `
+                    <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                        Retour Affectif en 72h
+                    </h2>
+                    <div class="mb-6">
+                        <img src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Retour Affectif" class="w-full h-64 object-cover rounded-lg">
+                    </div>
+                    <p class="text-gray-300 mb-4">
+                        Le Retour Affectif en 72h est notre rituel le plus demandé. Cette technique magique puissante permet de ramener un être cher, réveiller les sentiments endormis et renforcer les liens affectifs qui vous unissent.
+                    </p>
+                    <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Ce rituel est recommandé pour:</h3>
+                    <ul class="list-disc pl-5 mb-6 text-gray-300 space-y-2">
+                        <li>Faire revenir un ex-partenaire</li>
+                        <li>Raviver la flamme dans une relation qui s'éteint</li>
+                        <li>Briser l'influence d'une tierce personne</li>
+                        <li>Créer une connexion profonde et durable</li>
+                    </ul>
+                    <div class="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-6">
+                        <h3 class="font-cinzel text-xl font-bold mb-3 text-white">Détails du rituel:</h3>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-clock text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Durée: 72 heures</span>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-moon text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Période: Tout moment (plus puissant pendant la pleine lune)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star text-pink-500 mr-3"></i>
+                            <span class="text-gray-300">Efficacité: Premiers signes en 72h, résultats complets en 7 jours</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-2xl font-bold text-pink-500">199€</span>
+                        <button onclick="requestRitual('Retour Affectif en 72h')" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
+                            Demander ce rituel
+                        </button>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('ritualModalContent').innerHTML = content;
+            openModal('ritualModal');
+        }
+
+        // Category modal functions
+        function openCategoryModal(categoryId) {
+            // Here you would load content based on the category ID
+            let content = `
+                <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Catégorie: ${categoryId.charAt(0).toUpperCase() + categoryId.slice(1)}
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Contenu de la catégorie ${categoryId} à venir...
+                </p>
+            `;
+            
+            document.getElementById('categoryModalContent').innerHTML = content;
+            openModal('categoryModal');
+        }
+
+        // Blog modal functions
+        function openBlogModal(blogId) {
+            // Here you would load content based on the blog ID
+            let content = `
+                <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                    Article de Blog
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Contenu de l'article ${blogId} à venir...
+                </p>
+            `;
+            
+            document.getElementById('blogModalContent').innerHTML = content;
+            openModal('blogModal');
+        }
+
+        // Shopping cart functions
+        let cart = [];
+        let cartTotal = 0;
+
+        function addToCart(productName, price) {
+            cart.push({name: productName, price: price});
+            cartTotal += price;
+            updateCartCount();
+            alert(`${productName} ajouté au panier!`);
+        }
+
+        function updateCartCount() {
+            document.getElementById('cart-count').textContent = cart.length;
+        }
+
+        function openCartModal() {
+            let content = '';
+            
+            if (cart.length === 0) {
+                content = '<p class="text-gray-400">Votre panier est vide</p>';
+            } else {
+                content = '<ul class="space-y-4">';
+                cart.forEach((item, index) => {
+                    content += `
+                        <li class="flex justify-between items-center border-b border-purple-800 pb-2">
+                            <span class="text-white">${item.name}</span>
+                            <div class="flex items-center">
+                                <span class="text-pink-500 font-bold">${item.price}€</span>
+                                <button onclick="removeFromCart(${index})" class="ml-3 text-gray-400 hover:text-pink-500">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                });
+                content += '</ul>';
+            }
+            
+            document.getElementById('cartItems').innerHTML = content;
+            document.getElementById('cartTotal').textContent = cartTotal + '€';
+            openModal('cartModal');
+        }
+
+        function removeFromCart(index) {
+            cartTotal -= cart[index].price;
+            cart.splice(index, 1);
+            updateCartCount();
+            openCartModal(); // Refresh the cart modal
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                alert('Votre panier est vide!');
+                return;
+            }
+            
+            alert('Merci pour votre commande! Vous allez être redirigé vers la page de paiement.');
+            // Here you would redirect to checkout page
+        }
+
+        // Other functions
+        function openAllRituals() {
+            alert('Tous les rituels seront affichés ici.');
+            // Here you would redirect to all rituals page
+        }
+
+        function openAllBlogPosts() {
+            alert('Tous les articles de blog seront affichés ici.');
+            // Here you would redirect to blog page
+        }
+
+        function openAllTestimonials() {
+            alert('Tous les témoignages seront affichés ici.');
+            // Here you would redirect to testimonials page
+        }
+
+        function openShop() {
+            alert('La boutique complète sera affichée ici.');
+            // Here you would redirect to shop page
+        }
+
+        function openShopCategory(category) {
+            alert(`La catégorie ${category} sera affichée ici.`);
+            // Here you would redirect to shop category page
+        }
+
+        function requestRitual(ritualName) {
+            alert(`Votre demande pour le ${ritualName} a été enregistrée. Nous vous contacterons sous peu.`);
+            closeModal('ritualModal');
+            // Here you would handle the ritual request
+        }
+
+        // Form submission
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Votre demande de consultation a été envoyée. Nous vous contacterons sous peu.');
+            this.reset();
+        });
+    </script>
+</body>
+</html>

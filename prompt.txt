@@ -1,0 +1,7 @@
+tres, ne surpprime rien du code exixtant, maintenant tu vas rendre cliquables les bouton qui ne cliquent pas, par exemple quand on clique sur en savoir plus, tu vas mettre des choses imaginaires a personnaliser apres,tu imagines ges rituels juste pour la forme, puis tu vas donner un code backend pour recevoir les demandes recuperer les gmail, une interface admin flask par exemple ou tout ce que tu veux, pour gerer le site, les blogs pour poster les rituels facilement comme un expert
+
+
+
+
+
+quand je vais a http://127.0.0.1:5500/admin/ je vois le directory listining ,tous les fichiers admin php etc mais je n arrive pas a creer un user admin , je n ai pas utilisé les identifients parce qu il ne m a pas forcé a me connecter,pour le frontend, quand on publie un rituel , on va laisser la possibilité de commenter ou laisser un commentaire
