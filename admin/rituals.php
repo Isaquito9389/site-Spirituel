@@ -1,4 +1,38 @@
 <?php
+// Affichage forcé des erreurs PHP pour le debug
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+// Custom error handler to prevent 500 errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (error_reporting() === 0) {
+        return false;
+    }
+    
+    $error_message = "Error [$errno] $errstr - $errfile:$errline";
+    error_log($error_message);
+    
+    if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">
+            <h3>Une erreur est survenue</h3>
+            <p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>
+            <p><a href=\"dashboard.php\" style=\"color: #721c24; text-decoration: underline;\">Retour au tableau de bord</a></p>
+        </div>";
+        
+        // Log detailed error for admin
+        if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+            echo "<div style=\"padding: 20px; background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; border-radius: 5px; margin-top: 20px;\">
+                <h4>Détails de l'erreur (visible uniquement pour les administrateurs)</h4>
+                <p>" . htmlspecialchars($error_message) . "</p>
+            </div>";
+        }
+        
+        return true;
+    }
+    
+    return false;
+}, E_ALL);
+
 session_start();
 
 // Check if user is logged in
@@ -7,15 +41,44 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// Get admin username
+$admin_username = $_SESSION['admin_username'] ?? 'Admin';
+
+// Handle logout
+if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
+    // Clear all session variables
+    $_SESSION = array();
+    
+    // Destroy the session
+    session_destroy();
+    
+    // Redirect to login page
+    header("Location: index.php");
+    exit;
+}
+
 // Include database connection
 require_once 'includes/db_connect.php';
+// Vérification explicite de la connexion PDO
+if (!isset($pdo) || !$pdo) {
+    echo "<div style='background: #ffdddd; color: #a00; padding: 15px; margin: 10px 0; border: 2px solid #a00;'>Erreur critique : la connexion à la base de données n'est pas initialisée après l'inclusion de includes/db_connect.php.<br>Vérifiez le fichier de connexion et les identifiants !</div>";
+    // On arrête tout pour éviter d'autres erreurs
+    exit;
+}
 
 // Initialize variables
 $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 $message = '';
 $messageType = '';
+$ritual = null;
 
-// Handle form submissions
+// Get message from URL if redirected
+if (isset($_GET['message']) && isset($_GET['type'])) {
+    $message = $_GET['message'];
+    $messageType = $_GET['type'];
+}
+
+// Handle form submissions with simplified approach
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_ritual'])) {
         // Get form data
@@ -27,126 +90,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $duration = trim($_POST['duration']);
         $price = trim($_POST['price']);
         $status = $_POST['status'];
-        $featured_image = ''; // Will be updated if an image is uploaded
+        $featured_image = isset($_POST['current_image']) ? $_POST['current_image'] : '';
         
         // Validate form data
         if (empty($title) || empty($content)) {
             $message = "Le titre et le contenu sont obligatoires.";
             $messageType = "error";
         } else {
-            // Handle image upload if present
-            if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = '../uploads/rituals/';
-                
-                // Create directory if it doesn't exist
-                if (!file_exists($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
-                }
-                
-                // Generate unique filename
-                $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
-                $filename = uniqid() . '.' . $file_extension;
-                $target_file = $upload_dir . $filename;
-                
-                // Move uploaded file
-                if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $target_file)) {
-                    $featured_image = 'uploads/rituals/' . $filename;
+            // Désactivation de l'upload de fichiers sur InfinityFree
+            if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+                // Message d'information pour l'utilisateur
+                $message = "L'upload de fichiers n'est pas disponible sur cet hébergement. Merci d'utiliser une URL d'image externe.";
+                $messageType = "error";
+                if (isset($_POST['image_url']) && !empty($_POST['image_url'])) {
+                    $featured_image = $_POST['image_url'];
+                } elseif (isset($_POST['current_image']) && !empty($_POST['current_image'])) {
+                    $featured_image = $_POST['current_image'];
                 } else {
-                    $message = "Erreur lors du téléchargement de l'image.";
-                    $messageType = "error";
+                    $featured_image = '';
                 }
+            } elseif (isset($_POST['image_url']) && !empty($_POST['image_url'])) {
+                $featured_image = $_POST['image_url'];
             } elseif (isset($_POST['current_image']) && !empty($_POST['current_image'])) {
                 $featured_image = $_POST['current_image'];
             }
             
-            // If no errors, save to database
-            if (empty($message)) {
-                try {
-                    // Prepare SQL statement based on whether it's an insert or update
-                    if ($ritual_id > 0) {
-                        // Update existing ritual
-                        $sql = "UPDATE rituals SET 
-                                title = :title, 
-                                content = :content, 
-                                excerpt = :excerpt, 
-                                category = :category,
-                                duration = :duration,
-                                price = :price,
-                                status = :status";
-                        
-                        // Only update featured_image if a new one was uploaded
-                        if (!empty($featured_image)) {
-                            $sql .= ", featured_image = :featured_image";
-                        }
-                        
-                        $sql .= " WHERE id = :ritual_id";
-                        
-                        $stmt = $pdo->prepare($sql);
-                        $stmt->bindParam(':ritual_id', $ritual_id, PDO::PARAM_INT);
-                    } else {
-                        // Insert new ritual
-                        $sql = "INSERT INTO rituals (title, content, excerpt, category, duration, price, status, featured_image, created_at) 
-                                VALUES (:title, :content, :excerpt, :category, :duration, :price, :status, :featured_image, NOW())";
-                        $stmt = $pdo->prepare($sql);
-                    }
+            try {
+                // Prepare SQL statement based on whether it's an insert or update
+                if ($ritual_id > 0) {
+                    // Update existing ritual
+                    $sql = "UPDATE rituals SET 
+                            title = :title, 
+                            content = :content, 
+                            excerpt = :excerpt, 
+                            category = :category,
+                            duration = :duration,
+                            price = :price,
+                            status = :status,
+                            featured_image = :featured_image,
+                            updated_at = NOW()
+                            WHERE id = :ritual_id";
                     
-                    // Bind common parameters
-                    $stmt->bindParam(':title', $title);
-                    $stmt->bindParam(':content', $content);
-                    $stmt->bindParam(':excerpt', $excerpt);
-                    $stmt->bindParam(':category', $category);
-                    $stmt->bindParam(':duration', $duration);
-                    $stmt->bindParam(':price', $price);
-                    $stmt->bindParam(':status', $status);
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->bindParam(':ritual_id', $ritual_id, PDO::PARAM_INT);
+                } else {
+                    // Insert new ritual
+                    $sql = "INSERT INTO rituals (title, content, excerpt, category, duration, price, status, featured_image, created_at) 
+                            VALUES (:title, :content, :excerpt, :category, :duration, :price, :status, :featured_image, NOW())";
                     
-                    // Bind featured_image if it exists
-                    if (!empty($featured_image)) {
-                        $stmt->bindParam(':featured_image', $featured_image);
-                    }
-                    
-                    // Execute the statement
-                    $stmt->execute();
-                    
-                    // Set success message
-                    if ($ritual_id > 0) {
-                        $message = "Le rituel a été mis à jour avec succès.";
-                    } else {
-                        $message = "Le rituel a été créé avec succès.";
-                    }
-                    $messageType = "success";
-                    
-                    // Redirect to list view
-                    header("Location: rituals.php?message=" . urlencode($message) . "&type=" . $messageType);
-                    exit;
-                } catch (PDOException $e) {
-                    $message = "Erreur de base de données: " . $e->getMessage();
-                    $messageType = "error";
+                    $stmt = $pdo->prepare($sql);
                 }
+                
+                // Bind parameters
+                $stmt->bindParam(':title', $title, PDO::PARAM_STR);
+                $stmt->bindParam(':content', $content, PDO::PARAM_STR);
+                $stmt->bindParam(':excerpt', $excerpt, PDO::PARAM_STR);
+                $stmt->bindParam(':category', $category, PDO::PARAM_STR);
+                $stmt->bindParam(':duration', $duration, PDO::PARAM_STR);
+                $stmt->bindParam(':price', $price, PDO::PARAM_STR);
+                $stmt->bindParam(':status', $status, PDO::PARAM_STR);
+                $stmt->bindParam(':featured_image', $featured_image, PDO::PARAM_STR);
+                
+                $stmt->execute();
+                
+                // Set success message
+                if ($ritual_id > 0) {
+                    $message = "Le rituel a été mis à jour avec succès.";
+                } else {
+                    $message = "Le rituel a été créé avec succès.";
+                }
+                $messageType = "success";
+                
+                // Redirect to list view
+                header("Location: rituals.php?message=" . urlencode($message) . "&type=" . $messageType);
+                exit;
+            } catch (PDOException $e) {
+                $message = "Erreur de base de données: " . $e->getMessage();
+                $messageType = "error";
             }
         }
     } elseif (isset($_POST['delete_ritual'])) {
-        // Delete ritual
+        // Delete ritual with simplified approach
         $ritual_id = intval($_POST['ritual_id']);
         
         try {
-            // Get the featured image path before deleting
-            $stmt = $pdo->prepare("SELECT featured_image FROM rituals WHERE id = :ritual_id");
-            $stmt->bindParam(':ritual_id', $ritual_id, PDO::PARAM_INT);
+            // Delete from database
+            $stmt = $pdo->prepare("DELETE FROM rituals WHERE id = :id");
+            $stmt->bindParam(':id', $ritual_id, PDO::PARAM_INT);
             $stmt->execute();
-            $ritual = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // Delete the ritual
-            $stmt = $pdo->prepare("DELETE FROM rituals WHERE id = :ritual_id");
-            $stmt->bindParam(':ritual_id', $ritual_id, PDO::PARAM_INT);
-            $stmt->execute();
-            
-            // Delete the featured image if it exists
-            if (!empty($ritual['featured_image'])) {
-                $image_path = '../' . $ritual['featured_image'];
-                if (file_exists($image_path)) {
-                    unlink($image_path);
-                }
-            }
             
             $message = "Le rituel a été supprimé avec succès.";
             $messageType = "success";
@@ -171,22 +202,34 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
 $ritual = null;
 if ($action === 'edit' && isset($_GET['id'])) {
     $ritual_id = intval($_GET['id']);
-    
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM rituals WHERE id = :ritual_id");
-        $stmt->bindParam(':ritual_id', $ritual_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $ritual = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$ritual) {
-            $message = "Rituel introuvable.";
-            $messageType = "error";
-            $action = 'list';
-        }
-    } catch (PDOException $e) {
-        $message = "Erreur de base de données: " . $e->getMessage();
+    if (!isset($pdo) || !$pdo) {
+        $message = "Erreur critique : la connexion à la base de données (\$pdo) n'est pas initialisée.";
         $messageType = "error";
-        $action = 'list';
+        if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+            echo "<div style='color: red; padding: 10px;'>Erreur critique : la connexion à la base de données (\$pdo) n'est pas initialisée.</div>";
+        }
+    } else {
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM rituals WHERE id = ?");
+            $stmt->execute([$ritual_id]);
+            $ritual = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$ritual) {
+                $message = "Rituel introuvable.";
+                $messageType = "error";
+            }
+        } catch (PDOException $e) {
+            $message = "Erreur de base de données: " . $e->getMessage();
+            $messageType = "error";
+            if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                echo "<div style='color: red; padding: 10px;'>Erreur PDO lors de la récupération du rituel : ".htmlspecialchars($e->getMessage())."</div>";
+            }
+        } catch (Throwable $e) {
+            $message = "Erreur inattendue: " . $e->getMessage();
+            $messageType = "error";
+            if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                echo "<div style='color: red; padding: 10px;'>Erreur inattendue lors de la récupération du rituel : ".htmlspecialchars($e->getMessage())."</div>";
+            }
+        }
     }
 }
 
@@ -569,15 +612,30 @@ try {
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <label for="featured_image" class="block text-gray-300 mb-2">Image à la une</label>
-                        <input type="file" id="featured_image" name="featured_image" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" accept="image/*">
-                        <?php if ($ritual && !empty($ritual['featured_image'])): ?>
-                            <div class="mt-2 flex items-center">
-                                <img src="../<?php echo $ritual['featured_image']; ?>" alt="Image actuelle" class="w-16 h-16 object-cover rounded mr-2">
-                                <span class="text-gray-400 text-sm">Image actuelle</span>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="featured_image" class="block text-white mb-2">Image à la une</label>
+                            <div class="flex flex-col space-y-4">
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex-1">
+                                        <input type="file" id="featured_image" name="featured_image" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white" disabled>
+                                        <p class="text-red-400 text-sm mt-1">L'upload de fichiers est désactivé sur cet hébergement. Utilisez une URL d'image externe.</p>
+                                    </div>
+                                    <?php if (!empty($ritual['featured_image'])): ?>
+                                    <div class="w-24 h-24 bg-gray-800 rounded-lg overflow-hidden">
+                                        <img src="../<?php echo htmlspecialchars($ritual['featured_image']); ?>" alt="Image à la une" class="w-full h-full object-cover">
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="flex-1 mt-2">
+                                    <label for="image_url" class="block text-white mb-2">OU utilisez une URL d'image</label>
+                                    <input type="url" id="image_url" name="image_url" placeholder="https://exemple.com/image.jpg" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                                    <p class="text-gray-400 text-sm mt-1">Si l'upload ne fonctionne pas, vous pouvez utiliser une URL d'image externe</p>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                            <input type="hidden" name="current_image" value="<?php echo htmlspecialchars($ritual['featured_image'] ?? ''); ?>">
+                        </div>
                     </div>
                     
                     <div class="flex justify-end space-x-4">
@@ -588,3 +646,41 @@ try {
                             <?php echo $action === 'edit' ? 'Mettre à jour' : 'Publier'; ?> le rituel
                         </button>
                     </div>
+                </form>
+            <?php endif; ?>
+        </main>
+    </div>
+
+    <!-- Scripts - Simplifiés pour éviter les erreurs 500 -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script>
+        // Configuration simple de Quill pour éviter les problèmes
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link']
+                ] // toolbar simplifié
+            },
+        });
+        
+        // Mise à jour du contenu avant soumission du formulaire
+        document.querySelector('form').addEventListener('submit', function() {
+            document.getElementById('content').value = quill.root.innerHTML;
+        });
+        
+        // Fonctions pour la fenêtre modale de suppression
+        function confirmDelete(ritualId, ritualTitle) {
+            document.getElementById('deleteRitualId').value = ritualId;
+            document.getElementById('deleteRitualTitle').textContent = ritualTitle;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

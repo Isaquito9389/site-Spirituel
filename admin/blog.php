@@ -1,4 +1,34 @@
 <?php
+// Custom error handler to prevent 500 errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (error_reporting() === 0) {
+        return false;
+    }
+    
+    $error_message = "Error [$errno] $errstr - $errfile:$errline";
+    error_log($error_message);
+    
+    if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">
+            <h3>Une erreur est survenue</h3>
+            <p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>
+            <p><a href=\"dashboard.php\" style=\"color: #721c24; text-decoration: underline;\">Retour au tableau de bord</a></p>
+        </div>";
+        
+        // Log detailed error for admin
+        if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+            echo "<div style=\"padding: 20px; background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; border-radius: 5px; margin-top: 20px;\">
+                <h4>Détails de l'erreur (visible uniquement pour les administrateurs)</h4>
+                <p>" . htmlspecialchars($error_message) . "</p>
+            </div>";
+        }
+        
+        return true;
+    }
+    
+    return false;
+}, E_ALL);
+
 session_start();
 
 // Check if user is logged in
@@ -7,8 +37,9 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// Include database connection
+// Include database connection and WordPress API functions
 require_once 'includes/db_connect.php';
+require_once 'includes/wp_api_connect.php';
 
 // Initialize variables
 $action = isset($_GET['action']) ? $_GET['action'] : 'list';
@@ -32,27 +63,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "Le titre et le contenu sont obligatoires.";
             $messageType = "error";
         } else {
-            // Handle image upload if present
+            // Gestion des images avec support pour l'upload et les URL
             if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = '../uploads/blog/';
-                
-                // Create directory if it doesn't exist
-                if (!file_exists($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
+                try {
+                    $upload_dir = '../uploads/blog/';
+                    
+                    // Créer le répertoire s'il n'existe pas
+                    if (!file_exists($upload_dir)) {
+                        if (!mkdir($upload_dir, 0755, true)) {
+                            throw new Exception("Impossible de créer le dossier d'upload");
+                        }
+                    }
+                    
+                    // Générer un nom de fichier unique
+                    $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
+                    $filename = uniqid() . '.' . $file_extension;
+                    $target_file = $upload_dir . $filename;
+                    
+                    // Déplacer le fichier uploadé
+                    if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $target_file)) {
+                        $featured_image = 'uploads/blog/' . $filename;
+                    } else {
+                        throw new Exception("Échec du déplacement du fichier uploadé");
+                    }
+                } catch (Exception $e) {
+                    // En cas d'erreur avec l'upload, on utilise l'URL si disponible
+                    if (isset($_POST['image_url']) && !empty($_POST['image_url'])) {
+                        $featured_image = $_POST['image_url'];
+                    } elseif (isset($_POST['current_image']) && !empty($_POST['current_image'])) {
+                        $featured_image = $_POST['current_image'];
+                    }
                 }
-                
-                // Generate unique filename
-                $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
-                $filename = uniqid() . '.' . $file_extension;
-                $target_file = $upload_dir . $filename;
-                
-                // Move uploaded file
-                if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $target_file)) {
-                    $featured_image = 'uploads/blog/' . $filename;
-                } else {
-                    $message = "Erreur lors du téléchargement de l'image.";
-                    $messageType = "error";
-                }
+            } elseif (isset($_POST['image_url']) && !empty($_POST['image_url'])) {
+                $featured_image = $_POST['image_url'];
             } elseif (isset($_POST['current_image']) && !empty($_POST['current_image'])) {
                 $featured_image = $_POST['current_image'];
             }
@@ -99,102 +142,182 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     // Execute the statement
-                    $stmt->execute();
-                    
-                    // Set success message
-                    if ($post_id > 0) {
-                        $message = "L'article a été mis à jour avec succès.";
-                    } else {
-                        $message = "L'article a été créé avec succès.";
-                    }
-                    $messageType = "success";
-                    
-                    // Redirect to list view
-                    header("Location: blog.php?message=" . urlencode($message) . "&type=" . $messageType);
-                    exit;
+                    if ($stmt->execute()) {
+                        // Get the post ID if it's a new post
+                        if ($post_id == 0) {
+                            $post_id = $pdo->lastInsertId();
+                        }
+                        
+                        // Sync with WordPress
+                        $wp_featured_image_id = null;
+                        
+                        // Upload featured image to WordPress if exists
+                        if (!empty($featured_image) && file_exists('../' . $featured_image)) {
+                            $file_path = '../' . $featured_image;
+                            $file_name = basename($featured_image);
+                            $media_response = upload_media_to_wordpress($file_path, $file_name);
+                            
+                            if ($media_response['success']) {
+                                $wp_featured_image_id = $media_response['data']['id'];
+                            }
+                        }
+                        
+                        // Map category to WordPress category ID
+                        $wp_category_id = map_category_to_wordpress($category);
+                        
+                        // Prepare data for WordPress
+                        $wp_data = [
+                            'title' => $title,
+                            'content' => $content,
+                            'excerpt' => $excerpt,
+                            'status' => $status === 'published' ? 'publish' : 'draft',
+                            'categories' => [$wp_category_id]
+                        ];
+                        
+                        // Add featured image if available
+                        if ($wp_featured_image_id) {
+                            $wp_data['featured_media'] = $wp_featured_image_id;
+                        }
+                        
+                        // Get existing WordPress post ID if updating
+                        $wp_post_id = null;
+                        if ($post_id > 0) {
+                            $stmt = $pdo->prepare("SELECT wp_post_id FROM blog_posts WHERE id = :post_id");
+                            $stmt->bindParam(':post_id', $post_id);
+                            $stmt->execute();
+                            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                            if ($result && !empty($result['wp_post_id'])) {
+                                $wp_post_id = $result['wp_post_id'];
+                            }
+                        }
+                        
+                        // Send to WordPress
+                        $wp_response = null;
+                        if ($wp_post_id) {
+                            // Update existing WordPress post
+                            $wp_response = send_to_wordpress('posts/' . $wp_post_id, $wp_data, 'PUT');
+                        } else {
+                            // Create new WordPress post
+                            $wp_response = send_to_wordpress('posts', $wp_data);
+                            
+                            // If successful, store the WordPress post ID
+                            if ($wp_response['success'] && isset($wp_response['data']['id'])) {
+                                $new_wp_post_id = $wp_response['data']['id'];
+                                $update_stmt = $pdo->prepare("UPDATE blog_posts SET wp_post_id = :wp_post_id WHERE id = :post_id");
+                                $update_stmt->bindParam(':wp_post_id', $new_wp_post_id);
+                                $update_stmt->bindParam(':post_id', $post_id);
+                                $update_stmt->execute();
+                            }
+                        }
+                        
+                        $message = $post_id > 0 ? "L'article a été mis à jour avec succès." : "L'article a été créé avec succès.";
+                        
+                        // Add WordPress sync status to message
+                        if ($wp_response && $wp_response['success']) {
+                            $message .= " Synchronisé avec WordPress.";
+                        } else if ($wp_response) {
+                            $message .= " Mais la synchronisation avec WordPress a échoué.";
+                        }
+                        
+                        $messageType = "success";
+                        
+                        // Redirect to list view
+                        header("Location: blog.php?message=" . urlencode($message) . "&type=" . $messageType);
+                        exit;
                 } catch (PDOException $e) {
                     $message = "Erreur de base de données: " . $e->getMessage();
                     $messageType = "error";
                 }
             }
+        } elseif (isset($_POST['delete_post'])) {
+            // Delete post
+            $post_id = intval($_POST['post_id']);
+            
+            try {
+                // Get the post details before deleting
+                $stmt = $pdo->prepare("SELECT featured_image, wp_post_id FROM blog_posts WHERE id = :post_id");
+                $stmt->bindParam(':post_id', $post_id);
+                $stmt->execute();
+                $post = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Delete the post from database
+                $stmt = $pdo->prepare("DELETE FROM blog_posts WHERE id = :post_id");
+                $stmt->bindParam(':post_id', $post_id);
+                
+                if ($stmt->execute()) {
+                    // Delete the featured image file if it exists
+                    if ($post && !empty($post['featured_image'])) {
+                        $image_path = '../' . $post['featured_image'];
+                        if (file_exists($image_path)) {
+                            unlink($image_path);
+                        }
+                    }
+                    
+                    // Delete from WordPress if wp_post_id exists
+                    if ($post && !empty($post['wp_post_id'])) {
+                        $wp_response = send_to_wordpress('posts/' . $post['wp_post_id'], [], 'DELETE');
+                        
+                        if ($wp_response && $wp_response['success']) {
+                            $message = "L'article a été supprimé avec succès et de WordPress.";
+                        } else {
+                            $message = "L'article a été supprimé localement, mais la suppression de WordPress a échoué.";
+                        }
+                    } else {
+                        $message = "L'article a été supprimé avec succès.";
+                    }
+                    
+                    $messageType = "success";
+                }
+                
+                // Redirect to list view
+                header("Location: blog.php?message=" . urlencode($message) . "&type=" . $messageType);
+                exit;
+            } catch (PDOException $e) {
+                $message = "Erreur de base de données: " . $e->getMessage();
+                $messageType = "error";
+            }
         }
-    } elseif (isset($_POST['delete_post'])) {
-        // Delete post
-        $post_id = intval($_POST['post_id']);
+    }
+
+    // Get message from URL if redirected
+    if (isset($_GET['message']) && isset($_GET['type'])) {
+        $message = $_GET['message'];
+        $messageType = $_GET['type'];
+    }
+
+    // Get post data if editing
+    $post = null;
+    if ($action === 'edit' && isset($_GET['id'])) {
+        $post_id = intval($_GET['id']);
         
         try {
-            // Get the featured image path before deleting
-            $stmt = $pdo->prepare("SELECT featured_image FROM blog_posts WHERE id = :post_id");
+            $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE id = :post_id");
             $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
             $stmt->execute();
             $post = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            // Delete the post
-            $stmt = $pdo->prepare("DELETE FROM blog_posts WHERE id = :post_id");
-            $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
-            $stmt->execute();
-            
-            // Delete the featured image if it exists
-            if (!empty($post['featured_image'])) {
-                $image_path = '../' . $post['featured_image'];
-                if (file_exists($image_path)) {
-                    unlink($image_path);
-                }
+            if (!$post) {
+                $message = "Article introuvable.";
+                $messageType = "error";
+                $action = 'list';
             }
-            
-            $message = "L'article a été supprimé avec succès.";
-            $messageType = "success";
-            
-            // Redirect to list view
-            header("Location: blog.php?message=" . urlencode($message) . "&type=" . $messageType);
-            exit;
+        } catch (PDOException $e) {
+            $message = "Erreur de base de données: " . $e->getMessage();
+            $messageType = "error";
+            $action = 'list';
+        }
+    }
+
+    // Get all posts for listing
+    if ($action === 'list') {
+        try {
+            $stmt = $pdo->query("SELECT *, CASE WHEN wp_post_id IS NOT NULL THEN 'Oui' ELSE 'Non' END as wp_synced FROM blog_posts ORDER BY created_at DESC");
+            $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $message = "Erreur de base de données: " . $e->getMessage();
             $messageType = "error";
         }
     }
-}
-
-// Get message from URL if redirected
-if (isset($_GET['message']) && isset($_GET['type'])) {
-    $message = $_GET['message'];
-    $messageType = $_GET['type'];
-}
-
-// Get post data if editing
-$post = null;
-if ($action === 'edit' && isset($_GET['id'])) {
-    $post_id = intval($_GET['id']);
-    
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE id = :post_id");
-        $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $post = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$post) {
-            $message = "Article introuvable.";
-            $messageType = "error";
-            $action = 'list';
-        }
-    } catch (PDOException $e) {
-        $message = "Erreur de base de données: " . $e->getMessage();
-        $messageType = "error";
-        $action = 'list';
-    }
-}
-
-// Get all posts if listing
-$posts = [];
-if ($action === 'list') {
-    try {
-        $stmt = $pdo->query("SELECT * FROM blog_posts ORDER BY created_at DESC");
-        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $message = "Erreur de base de données: " . $e->getMessage();
-        $messageType = "error";
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -422,6 +545,7 @@ if ($action === 'list') {
                                         <th class="px-4 py-3 text-left text-gray-300">Catégorie</th>
                                         <th class="px-4 py-3 text-left text-gray-300">Statut</th>
                                         <th class="px-4 py-3 text-left text-gray-300">Date</th>
+                                        <th class="px-4 py-3 text-left text-gray-300">WordPress</th>
                                         <th class="px-4 py-3 text-right text-gray-300">Actions</th>
                                     </tr>
                                 </thead>
@@ -436,6 +560,11 @@ if ($action === 'list') {
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-gray-400"><?php echo date('d/m/Y', strtotime($post['created_at'])); ?></td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span class="<?php echo $post['wp_synced'] === 'Oui' ? 'text-green-500' : 'text-yellow-500'; ?>">
+                                                    <?php echo $post['wp_synced']; ?>
+                                                </span>
+                                            </td>
                                             <td class="px-4 py-3 text-right">
                                                 <a href="?action=edit&id=<?php echo $post['id']; ?>" class="text-blue-400 hover:text-blue-300 mx-1">
                                                     <i class="fas fa-edit"></i>
@@ -507,21 +636,48 @@ if ($action === 'list') {
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="featured_image" class="block text-gray-300 mb-2">Image à la une</label>
-                            <input type="file" id="featured_image" name="featured_image" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" accept="image/*">
-                            <?php if ($post && !empty($post['featured_image'])): ?>
-                                <div class="mt-2 flex items-center">
-                                    <img src="../<?php echo $post['featured_image']; ?>" alt="Image actuelle" class="w-16 h-16 object-cover rounded mr-2">
-                                    <span class="text-gray-400 text-sm">Image actuelle</span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="featured_image" class="block text-white mb-2">Image à la une</label>
+                                <div class="flex flex-col space-y-4">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="flex-1">
+                                            <input type="file" id="featured_image" name="featured_image" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white" accept="image/*">
+                                            <p class="text-gray-400 text-sm mt-1">Téléchargez une image depuis votre ordinateur</p>
+                                        </div>
+                                        <?php if (!empty($post['featured_image'])): ?>
+                                        <div class="w-24 h-24 bg-gray-800 rounded-lg overflow-hidden">
+                                            <img src="<?php echo (strpos($post['featured_image'], 'http') === 0) ? $post['featured_image'] : '../' . $post['featured_image']; ?>" alt="Image à la une" class="w-full h-full object-cover">
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="flex-1 mt-2">
+                                        <label for="image_url" class="block text-white mb-2">OU utilisez une URL d'image</label>
+                                        <input type="url" id="image_url" name="image_url" placeholder="https://exemple.com/image.jpg" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                                        <p class="text-gray-400 text-sm mt-1">Si l'upload ne fonctionne pas, vous pouvez utiliser une URL d'image externe</p>
+                                    </div>
                                 </div>
-                            <?php endif; ?>
+                                <input type="hidden" name="current_image" value="<?php echo htmlspecialchars($post['featured_image'] ?? ''); ?>">
+                            </div>
+                            </div>
+                            
+                            <div>
+                                <label for="status" class="block text-gray-300 mb-2">Statut</label>
+                                <select id="status" name="status" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300">
+                                    <option value="draft" <?php echo ($post && $post['status'] === 'draft') ? 'selected' : ''; ?>>Brouillon</option>
+                                    <option value="published" <?php echo ($post && $post['status'] === 'published') ? 'selected' : ''; ?>>Publié</option>
+                                </select>
+                            </div>
                         </div>
                         
-                        <div>
-                            <label for="status" class="block text-gray-300 mb-2">Statut</label>
-                            <select id="status" name="status" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300">
-                                <option value="draft" <?php echo ($post && $post['status'] === 'draft') ? 'selected' : ''; ?>>Brouillon</option>
+                        <div class="flex justify-end space-x-4">
+                            <a href="blog.php" class="px-6 py-3 rounded-full border border-purple-600 text-white font-medium hover:bg-purple-900 transition duration-300">
+                                Annuler
+                            </a>
+                            <button type="submit" name="save_post" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
+                                <?php echo $action === 'edit' ? 'Mettre à jour' : 'Publier'; ?> l'article
+                            </button>
                                 <option value="published" <?php echo ($post && $post['status'] === 'published') ? 'selected' : ''; ?>>Publié</option>
                             </select>
                         </div>

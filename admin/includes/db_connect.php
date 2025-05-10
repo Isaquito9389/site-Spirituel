@@ -7,10 +7,10 @@
  */
 
 // Database configuration
-$db_host = 'localhost';
-$db_name = 'mystica_occulta';
-$db_user = 'root';
-$db_pass = '';
+$db_host = 'sql310.infinityfree.com';
+$db_name = 'if0_36264299_mysticaoculta';
+$db_user = 'if0_36264299';
+$db_pass = 'wkqR0EhzO8CILv';
 $db_charset = 'utf8mb4';
 
 // DSN (Data Source Name)
