@@ -3,6 +3,18 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+// Gestionnaire d'erreur personnalisé pour éviter les erreurs 500
+set_error_handler(function(
+    $errno, $errstr, $errfile, $errline
+) {
+    if (error_reporting() === 0) {
+        return false;
+    }
+    $error_message = "Error [$errno] $errstr - $errfile:$errline";
+    error_log($error_message);
+    echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">\n<h3>Une erreur est survenue</h3>\n<p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>\n</div>";
+    return true;
+}, E_ALL);
 
 // Inclusion de la connexion à la base de données
 require_once 'admin/includes/db_connect.php';
@@ -189,35 +201,35 @@ $page_title = "Rituels et Services Magiques - Mystica Occulta";
                 </div>
             <?php else: ?>
                 <?php foreach ($rituals as $ritual): ?>
-                <a href="ritual.php?id=<?php echo $ritual['id']; ?>" class="card rounded-xl overflow-hidden shadow-lg">
+                <a href="ritual.php?slug=<?php echo urlencode($ritual['slug']); ?>" class="card rounded-xl overflow-hidden shadow-lg">
                     <div class="relative h-64">
-                        <?php if (!empty($ritual['featured_image'])): ?>
+                        <?php if (isset($ritual['featured_image']) && !empty($ritual['featured_image'])): ?>
                             <?php if (substr($ritual['featured_image'], 0, 4) === 'http'): ?>
-                                <img src="<?php echo htmlspecialchars($ritual['featured_image']); ?>" alt="<?php echo htmlspecialchars($ritual['title']); ?>" class="w-full h-full object-cover">
+                                <img src="<?php echo htmlspecialchars($ritual['featured_image']); ?>" alt="<?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?>" class="w-full h-full object-cover">
                             <?php else: ?>
-                                <img src="<?php echo htmlspecialchars($ritual['featured_image']); ?>" alt="<?php echo htmlspecialchars($ritual['title']); ?>" class="w-full h-full object-cover">
+                                <img src="<?php echo htmlspecialchars($ritual['featured_image']); ?>" alt="<?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?>" class="w-full h-full object-cover">
                             <?php endif; ?>
                         <?php else: ?>
                             <div class="w-full h-full bg-gradient-to-br from-purple-900 to-indigo-900"></div>
                         <?php endif; ?>
                         <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
-                        <?php if (!empty($ritual['price'])): ?>
+                        <?php if (isset($ritual['price']) && !empty($ritual['price'])): ?>
                         <div class="absolute bottom-4 right-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold">
                             <?php echo htmlspecialchars($ritual['price']); ?> €
                         </div>
                         <?php endif; ?>
-                        <?php if (!empty($ritual['category'])): ?>
+                        <?php if (isset($ritual['category']) && !empty($ritual['category'])): ?>
                         <div class="absolute top-4 left-4 bg-indigo-900 bg-opacity-80 text-white px-3 py-1 rounded-full text-xs">
                             <?php echo htmlspecialchars($ritual['category']); ?>
                         </div>
                         <?php endif; ?>
                     </div>
                     <div class="p-6">
-                        <h3 class="text-xl font-bold text-white mb-2"><?php echo htmlspecialchars($ritual['title']); ?></h3>
-                        <?php if (!empty($ritual['excerpt'])): ?>
+                        <h3 class="text-xl font-bold text-white mb-2"><?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?></h3>
+                        <?php if (isset($ritual['excerpt']) && !empty($ritual['excerpt'])): ?>
                         <p class="text-gray-400 mb-4 line-clamp-3"><?php echo htmlspecialchars(substr($ritual['excerpt'], 0, 120)) . (strlen($ritual['excerpt']) > 120 ? '...' : ''); ?></p>
                         <?php endif; ?>
-                        <?php if (!empty($ritual['duration'])): ?>
+                        <?php if (isset($ritual['duration']) && !empty($ritual['duration'])): ?>
                         <div class="text-gray-500 text-sm mb-4">
                             <span class="inline-block mr-4"><i class="fas fa-clock mr-1"></i><?php echo htmlspecialchars($ritual['duration']); ?></span>
                         </div>

@@ -216,7 +216,7 @@ if ($category) {
                 <?php else: ?>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <?php foreach ($posts as $post): ?>
-                        <a href="/blog/<?php echo urlencode($post['slug']); ?>" class="card rounded-lg overflow-hidden shadow-lg hover:shadow-xl">
+                        <a href="blog-post-slug.php?slug=<?php echo urlencode($post['slug']); ?>" class="card rounded-lg overflow-hidden shadow-lg hover:shadow-xl">
                             <div class="relative h-56">
                                 <?php if (!empty($post['featured_image'])): ?>
                                     <?php if (substr($post['featured_image'], 0, 4) === 'http'): ?>
@@ -324,7 +324,7 @@ if ($category) {
                     <h3 class="text-xl font-cinzel font-bold text-white mb-4">Articles Populaires</h3>
                     <div class="space-y-4">
                         <?php foreach ($popular_posts as $post): ?>
-                        <a href="/blog/<?php echo urlencode($post['slug']); ?>" class="flex items-center group">
+                        <a href="blog-post-slug.php?slug=<?php echo urlencode($post['slug']); ?>" class="flex items-center group">
                             <?php if (!empty($post['featured_image'])): ?>
                             <div class="w-16 h-16 rounded-lg overflow-hidden mr-4 flex-shrink-0">
                                 <?php if (substr($post['featured_image'], 0, 4) === 'http'): ?>

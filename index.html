@@ -123,6 +123,18 @@
         
         .glow-text {
             text-shadow: 0 0 10px rgba(247, 37, 133, 0.7);
+            display: inline-block;
+        }
+        
+        /* Ajustement pour les petits écrans */
+        @media (max-width: 640px) {
+            #home .container {
+                padding-top: 80px;
+            }
+            
+            #home h1 {
+                margin-top: 30px;
+            }
         }
         
         .candle-flicker {
@@ -149,6 +161,95 @@
             height: 100%;
             overflow: auto;
             background-color: rgba(0,0,0,0.8);
+        }
+        
+        /* Mobile menu styles */
+        #mobileMenu {
+            position: fixed;
+            top: 60px; /* Hauteur du header */
+            left: 0;
+            right: 0;
+            background-color: rgba(15, 14, 23, 0.98);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #7209b7;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            z-index: 49;
+            transition: all 0.3s ease;
+            transform: translateY(-150%);
+            opacity: 0;
+            padding: 0;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            border-bottom: 1px solid #7209b7;
+        }
+        
+        #mobileMenu.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        /* Amélioration du style des liens du menu mobile */
+        #mobileMenu a {
+            transition: all 0.2s ease;
+            position: relative;
+            display: block;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        #mobileMenu a:hover {
+            background-color: rgba(114, 9, 183, 0.3);
+            transform: translateX(5px);
+            color: white;
+        }
+        
+        #mobileMenu a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 1.5rem;
+            background-color: var(--accent);
+            transition: width 0.3s ease;
+        }
+        
+        #mobileMenu a:hover::after {
+            width: 30px;
+        }
+        
+        #mobileMenu a.btn-magic {
+            margin: 1rem;
+            text-align: center;
+        }
+        
+        #mobileMenu a.btn-magic:hover {
+            transform: translateY(-3px);
+        }
+        
+        #mobileMenu a.btn-magic::after {
+            display: none;
+        }
+        
+        /* Effet de superposition pour éviter que les sections s'entremêlent */
+        body.menu-open {
+            overflow: hidden;
+        }
+        
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 48;
+        }
+        
+        .overlay.active {
+            display: block;
         }
         
         .modal-content {
@@ -184,6 +285,8 @@
 <body class="bg-dark text-light">
     <!-- Header -->
     <header class="fixed w-full z-50 bg-dark bg-opacity-90 backdrop-blur-sm border-b border-purple-900">
+        <!-- Overlay pour le menu mobile -->
+        <div class="overlay" id="menuOverlay"></div>
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-900 to-pink-600 flex items-center justify-center">
@@ -212,32 +315,32 @@
         </div>
 
         <!-- Mobile Menu -->
-        <div class="md:hidden hidden absolute top-16 left-0 right-0 bg-dark p-4 border-t border-purple-900" id="mobileMenu">
-            <div class="flex flex-col space-y-4">
-                <a href="#home" class="text-gray-300 hover:text-white">Accueil</a>
-                <a href="#rituals" class="text-gray-300 hover:text-white">Rituels & Magie</a>
-                <a href="#vodoun" class="text-gray-300 hover:text-white">Vodoun</a>
-                <a href="#prosperity" class="text-gray-300 hover:text-white">Prospérité</a>
-                <a href="#love" class="text-gray-300 hover:text-white">Amour</a>
-                <a href="#shop" class="text-gray-300 hover:text-white">Boutique</a>
-                <a href="#testimonials" class="text-gray-300 hover:text-white">Témoignages</a>
-                <a href="#blog" class="text-gray-300 hover:text-white">Blog</a>
-                <a href="#contact" class="btn-magic px-4 py-2 rounded-full text-white font-medium text-center">Consultation</a>
+        <div class="md:hidden" id="mobileMenu">
+            <div class="flex flex-col">
+                <a href="#home" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-home mr-3"></i>Accueil</a>
+                <a href="#rituals" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-magic mr-3"></i>Rituels & Magie</a>
+                <a href="#vodoun" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-drum mr-3"></i>Vodoun</a>
+                <a href="#prosperity" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-coins mr-3"></i>Prospérité</a>
+                <a href="#love" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-heart mr-3"></i>Amour</a>
+                <a href="#shop" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-shopping-bag mr-3"></i>Boutique</a>
+                <a href="#testimonials" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-comment-alt mr-3"></i>Témoignages</a>
+                <a href="#blog" class="text-gray-300 hover:text-white border-b border-purple-900/50"><i class="fas fa-book mr-3"></i>Blog</a>
+                <a href="#contact" class="btn-magic mt-4 px-4 py-3 rounded-full text-white font-medium text-center mx-4"><i class="fas fa-envelope mr-2"></i>Consultation</a>
             </div>
         </div>
     </header>
 
     <!-- Hero Section -->
-    <section id="home" class="relative h-screen flex items-center justify-center bg-mystic overflow-hidden">
+    <section id="home" class="relative h-screen flex items-center justify-center overflow-hidden" style="background-image: url('assets/images/background-main.jpg'); background-size: cover; background-position: center;">
         <div class="absolute inset-0 hero-overlay"></div>
         <div class="absolute inset-0 flex items-center justify-center opacity-20">
             <div class="w-64 h-64 rounded-full bg-purple-900 filter blur-3xl"></div>
         </div>
         
-        <div class="container mx-auto px-4 relative z-10 text-center">
+        <div class="container mx-auto px-4 relative z-10 text-center pt-24 md:pt-16 sm:pt-0">
             <div class="max-w-4xl mx-auto">
-                <h1 class="font-cinzel text-4xl md:text-6xl font-bold mb-6 text-white">
-                    <span class="glow-text">Transformez Votre Vie</span> <br>
+                <h1 class="font-cinzel text-4xl md:text-6xl font-bold mb-6 text-white mt-10 sm:mt-0">
+                    <span class="glow-text inline-block">Transformez Votre Vie</span> <br>
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Par Des Rituels Ancestraux</span>
                 </h1>
                 <p class="text-xl md:text-2xl mb-10 text-gray-300 max-w-3xl mx-auto">
@@ -421,7 +524,7 @@
     </section>
 
     <!-- Vodoun Section -->
-    <section id="vodoun" class="py-20 bg-dark">
+    <section id="vodoun" class="py-20 bg-dark" style="background-image: url('assets/images/vodoun-bg.png'); background-size: cover; background-position: center; background-blend-mode: overlay;">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row items-center">
                 <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
@@ -457,7 +560,7 @@
                 <div class="md:w-1/2 relative">
                     <div class="relative z-10">
                         <div class="w-full h-96 rounded-xl bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1589998059171-988d322b23dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Vodoun Ritual" class="w-full h-full object-cover opacity-70">
+                            <img src="assets/images/vodoun-bg.png" alt="Vodoun Ritual" class="w-full h-full object-cover opacity-80">
                         </div>
                     </div>
                     <div class="absolute -bottom-5 -left-5 w-32 h-32 rounded-full bg-pink-800 opacity-20 z-0"></div>
@@ -795,9 +898,9 @@
             </div>
             
             <div class="text-center mt-12">
-                <button onclick="openAllTestimonials()" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
+                <a href="testimonials.php" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg transition duration-300">
                     Voir plus de témoignages <i class="fas fa-comments ml-2"></i>
-                </button>
+                </a>
             </div>
         </div>
     </section>
@@ -819,8 +922,8 @@
                 <!-- Product 1 -->
                 <div class="ritual-card rounded-xl overflow-hidden">
                     <div class="relative">
-                        <div class="w-full h-48 bg-gradient-to-br from-red-900 to-red-700 flex items-center justify-center">
-                            <i class="fas fa-fire text-6xl text-white candle-flicker"></i>
+                        <div class="w-full h-48 overflow-hidden">
+                            <img src="assets/images/products/bougie-rouge.jpg" alt="Bougie Rouge Passion" class="w-full h-full object-cover">
                         </div>
                         <div class="absolute top-3 right-3 bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded">
                             BESTSELLER
@@ -861,8 +964,8 @@
                 
                 <!-- Product 3 -->
                 <div class="ritual-card rounded-xl overflow-hidden">
-                    <div class="w-full h-48 bg-gradient-to-br from-purple-900 to-purple-700 flex items-center justify-center">
-                        <i class="fas fa-eye text-6xl text-white candle-flicker"></i>
+                    <div class="w-full h-48 overflow-hidden">
+                        <img src="assets/images/products/miroir-noir.jpg" alt="Miroir Noir Magique" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4">
                         <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Miroir Noir Magique</h3>
@@ -880,8 +983,8 @@
                 
                 <!-- Product 4 -->
                 <div class="ritual-card rounded-xl overflow-hidden">
-                    <div class="w-full h-48 bg-gradient-to-br from-green-900 to-green-700 flex items-center justify-center">
-                        <i class="fas fa-leaf text-6xl text-white candle-flicker"></i>
+                    <div class="w-full h-48 overflow-hidden">
+                        <img src="assets/images/products/encens.jpg" alt="Encens Purification" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4">
                         <h3 class="font-cinzel text-xl font-bold mb-2 text-white">Encens Purification</h3>
@@ -957,19 +1060,19 @@
                         <form id="contactForm" class="space-y-4">
                             <div>
                                 <label for="name" class="block text-gray-300 mb-2">Votre Nom</label>
-                                <input type="text" id="name" name="name" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom">
+                                <input type="text" id="name" name="name" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom">
                             </div>
                             <div>
                                 <label for="email" class="block text-gray-300 mb-2">Votre Email</label>
-                                <input type="email" id="email" name="email" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre email">
+                                <input type="email" id="email" name="email" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre email">
                             </div>
                             <div>
                                 <label for="phone" class="block text-gray-300 mb-2">Votre Téléphone</label>
-                                <input type="tel" id="phone" name="phone" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre numéro">
+                                <input type="tel" id="phone" name="phone" class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre numéro">
                             </div>
                             <div>
                                 <label for="subject" class="block text-gray-300 mb-2">Sujet de Consultation</label>
-                                <select id="subject" name="subject" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300">
+                                <select id="subject" name="subject" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300">
                                     <option value="">Sélectionnez un sujet</option>
                                     <option value="love">Amour & Relations</option>
                                     <option value="money">Prospérité & Richesse</option>
@@ -979,7 +1082,7 @@
                             </div>
                             <div>
                                 <label for="message" class="block text-gray-300 mb-2">Votre Message</label>
-                                <textarea id="message" name="message" rows="3" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Décrivez votre situation"></textarea>
+                                <textarea id="message" name="message" rows="3" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Décrivez votre situation"></textarea>
                             </div>
                             <button type="submit" class="w-full btn-magic px-6 py-4 rounded-full text-white font-bold text-lg mt-6">
                                 Envoyer la Demande <i class="fas fa-paper-plane ml-2"></i>
@@ -1143,7 +1246,37 @@
     <script>
         // Mobile menu toggle
         document.getElementById('mobileMenuButton').addEventListener('click', function() {
-            document.getElementById('mobileMenu').classList.toggle('hidden');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const menuOverlay = document.getElementById('menuOverlay');
+            const body = document.body;
+            
+            mobileMenu.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+            body.classList.toggle('menu-open');
+            
+            // Changer l'icône du bouton
+            const icon = this.querySelector('i');
+            if (mobileMenu.classList.contains('active')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        });
+        
+        // Fermer le menu en cliquant sur l'overlay
+        document.getElementById('menuOverlay').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const menuOverlay = document.getElementById('menuOverlay');
+            const body = document.body;
+            const icon = document.querySelector('#mobileMenuButton i');
+            
+            mobileMenu.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            body.classList.remove('menu-open');
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
         });
 
         // Smooth scrolling for anchor links
@@ -1156,14 +1289,27 @@
                 
                 const targetElement = document.querySelector(targetId);
                 if (targetElement) {
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 80,
-                        behavior: 'smooth'
-                    });
+                    // Ajouter un petit délai pour les liens du menu mobile
+                    // pour permettre au menu de se fermer avant le défilement
+                    setTimeout(() => {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 80,
+                            behavior: 'smooth'
+                        });
+                    }, 300);
                     
                     // Close mobile menu if open
-                    if (!document.getElementById('mobileMenu').classList.contains('hidden')) {
-                        document.getElementById('mobileMenu').classList.add('hidden');
+                    const mobileMenu = document.getElementById('mobileMenu');
+                    const menuOverlay = document.getElementById('menuOverlay');
+                    const body = document.body;
+                    const icon = document.querySelector('#mobileMenuButton i');
+                    
+                    if (mobileMenu.classList.contains('active')) {
+                        mobileMenu.classList.remove('active');
+                        menuOverlay.classList.remove('active');
+                        body.classList.remove('menu-open');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
                     }
                 }
             });
@@ -1313,18 +1459,20 @@
 
         // Category modal functions
         function openCategoryModal(categoryId) {
-            // Here you would load content based on the category ID
-            let content = `
-                <h2 class="font-cinzel text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-                    Catégorie: ${categoryId.charAt(0).toUpperCase() + categoryId.slice(1)}
-                </h2>
-                <p class="text-gray-300 mb-6">
-                    Contenu de la catégorie ${categoryId} à venir...
-                </p>
-            `;
+            // Mapper les ID de catégories du frontend vers les noms de catégories dans la base de données
+            let categoryMapping = {
+                'vodoun': 'Vodoun',
+                'salomon': 'Magie de Salomon',
+                'love': 'Amour',
+                'wealth': 'Prospérité',
+                'protection': 'Protection'
+            };
             
-            document.getElementById('categoryModalContent').innerHTML = content;
-            openModal('categoryModal');
+            // Récupérer le nom de catégorie approprié pour le backend
+            let categoryName = categoryMapping[categoryId] || categoryId;
+            
+            // Rediriger vers rituals.php avec le filtre de catégorie
+            window.location.href = `rituals.php?category=${encodeURIComponent(categoryName)}`;
         }
 
         // Blog modal functions
@@ -1405,41 +1553,59 @@
 
         // Other functions
         function openAllRituals() {
-            alert('Tous les rituels seront affichés ici.');
-            // Here you would redirect to all rituals page
+            window.location.href = 'rituals.php';
         }
 
         function openAllBlogPosts() {
-            alert('Tous les articles de blog seront affichés ici.');
-            // Here you would redirect to blog page
+            window.location.href = 'blog.php';
         }
 
         function openAllTestimonials() {
-            alert('Tous les témoignages seront affichés ici.');
-            // Here you would redirect to testimonials page
+            // Solution pour contourner les redirections problématiques
+            var url = window.location.origin + window.location.pathname.replace('index.html', '').replace('index.php', '') + 'testimonials.php';
+            window.location.href = url;
         }
 
         function openShop() {
-            alert('La boutique complète sera affichée ici.');
-            // Here you would redirect to shop page
+            // Rediriger vers la page de la boutique
+            window.location.href = 'shop.php';
         }
 
         function openShopCategory(category) {
-            alert(`La catégorie ${category} sera affichée ici.`);
-            // Here you would redirect to shop category page
+            // Rediriger vers la page de la boutique avec filtre de catégorie
+            window.location.href = `shop.php?category=${encodeURIComponent(category)}`;
         }
 
         function requestRitual(ritualName) {
-            alert(`Votre demande pour le ${ritualName} a été enregistrée. Nous vous contacterons sous peu.`);
-            closeModal('ritualModal');
-            // Here you would handle the ritual request
+            // Rediriger vers la page de contact avec le rituel pré-rempli
+            window.location.href = `contact.php?ritual=${encodeURIComponent(ritualName)}`;
         }
 
         // Form submission
         document.getElementById('contactForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Votre demande de consultation a été envoyée. Nous vous contacterons sous peu.');
-            this.reset();
+            
+            // Ceci est une modification pour s'assurer que le formulaire fonctionne correctement
+            // Nous allons modifier l'action du formulaire et le soumettre directement
+            this.action = 'contact.php';
+            this.method = 'post';
+            
+            // Ajouter un champ caché pour indiquer que c'est une consultation
+            const hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.name = 'subject';
+            hiddenField.value = 'Consultation Privée';
+            
+            // Remplacer la valeur du sujet si déjà sélectionnée
+            const subjectSelect = document.getElementById('subject');
+            if (subjectSelect.value) {
+                hiddenField.value = 'Consultation Privée: ' + subjectSelect.options[subjectSelect.selectedIndex].text;
+            }
+            
+            this.appendChild(hiddenField);
+            
+            // Soumettre le formulaire normalement
+            this.submit();
         });
     </script>
 </body>

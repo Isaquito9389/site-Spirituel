@@ -1,9 +1,4 @@
 <?php
-// Redirection vers la nouvelle version de la page
-header("Location: consultations_new.php");
-exit;
-
-// Le code ci-dessous ne sera pas exécuté en raison de la redirection
 // Affichage forcé des erreurs PHP pour le debug
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

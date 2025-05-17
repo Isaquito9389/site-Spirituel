@@ -1,4 +1,8 @@
 <?php
+// Affichage forcé des erreurs PHP pour le debug
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 // Custom error handler to prevent 500 errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (error_reporting() === 0) {
@@ -123,9 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $pdo->prepare($sql);
                         $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
                     } else {
-                        // Insert new post
-                        $sql = "INSERT INTO blog_posts (title, content, excerpt, category, status, featured_image, created_at) 
-                                VALUES (:title, :content, :excerpt, :category, :status, :featured_image, NOW())";
+                        // Insert new post - Construire la requête SQL en fonction de la présence ou non d'une image
+                        if (!empty($featured_image)) {
+                            $sql = "INSERT INTO blog_posts (title, content, excerpt, category, status, featured_image, created_at) 
+                                    VALUES (:title, :content, :excerpt, :category, :status, :featured_image, NOW())";
+                        } else {
+                            $sql = "INSERT INTO blog_posts (title, content, excerpt, category, status, created_at) 
+                                    VALUES (:title, :content, :excerpt, :category, :status, NOW())";
+                        }
                         $stmt = $pdo->prepare($sql);
                     }
                     
@@ -212,24 +221,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         $message = $post_id > 0 ? "L'article a été mis à jour avec succès." : "L'article a été créé avec succès.";
                         
-                        // Add WordPress sync status to message
+                        // Add WordPress sync status to message with detailed error information
                         if ($wp_response && $wp_response['success']) {
                             $message .= " Synchronisé avec WordPress.";
-                        } else if ($wp_response) {
-                            $message .= " Mais la synchronisation avec WordPress a échoué.";
+                            $messageType = "success";
+                        } else if (!isset($wp_response['success']) || !$wp_response['success']) {
+                            // Detailed error message for WordPress sync failure
+                            $wp_error_details = $wp_response['error'] ?? $wp_response;
+                            $message .= " Synchronisation WordPress échouée.";
+                            $messageType = "error";
+                            
+                            // Log detailed error for debugging
+                            error_log("WordPress Sync Error:");
+                            error_log("Status Code: " . ($wp_response['status'] ?? 'Unknown'));
+                            error_log("Error Details: " . print_r($wp_error_details, true));
+                            
+                            // Add more specific error information
+                            if (is_array($wp_error_details)) {
+                                if (isset($wp_error_details['code'])) {
+                                    $message .= " Code: " . $wp_error_details['code'];
+                                }
+                                if (isset($wp_error_details['message'])) {
+                                    $message .= " Message: " . $wp_error_details['message'];
+                                }
+                            }
+                            if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                                $error_details = "";
+                                if (isset($wp_response['method'])) {
+                                    $error_details .= " Méthode: " . $wp_response['method'] . ",";
+                                }
+                                if (isset($wp_response['status'])) {
+                                    $error_details .= " Code HTTP: " . $wp_response['status'];
+                                }
+                                if (isset($wp_response['curl_error'])) {
+                                    $error_details .= " Erreur cURL: " . $wp_response['curl_error'];
+                                }
+                                if (isset($wp_response['error'])) {
+                                    // Safely handle different error formats
+                                    $error_str = '';
+                                    if (is_string($wp_response['error'])) {
+                                        $error_str = $wp_response['error'];
+                                    } elseif (is_array($wp_response['error'])) {
+                                        $error_str = json_encode($wp_response['error']);
+                                    } else {
+                                        $error_str = print_r($wp_response['error'], true);
+                                    }
+                                    $error_details .= " Réponse: " . substr($error_str, 0, 100) . "...";
+                                }
+                                
+                                if (!empty($error_details)) {
+                                    $message .= " Détails: " . $error_details;
+                                }
+                                
+                                // Add link to WordPress connection test page
+                                $message .= " <a href='test_wp_api.php' class='text-blue-400 hover:text-blue-300'>Tester la connexion WordPress</a>";
+                            }
+                        } else {
+                            // If no WordPress response at all (local save only)
+                            $messageType = "success";
                         }
-                        
-                        $messageType = "success";
                         
                         // Redirect to list view
                         header("Location: blog.php?message=" . urlencode($message) . "&type=" . $messageType);
                         exit;
+                    }
                 } catch (PDOException $e) {
                     $message = "Erreur de base de données: " . $e->getMessage();
                     $messageType = "error";
                 }
             }
-        } elseif (isset($_POST['delete_post'])) {
+        }
+    } // Close the if (isset($_POST['save_post'])) block
+    
+    if (isset($_POST['delete_post'])) {
             // Delete post
             $post_id = intval($_POST['post_id']);
             
@@ -259,14 +323,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         if ($wp_response && $wp_response['success']) {
                             $message = "L'article a été supprimé avec succès et de WordPress.";
+                            $messageType = "success";
                         } else {
                             $message = "L'article a été supprimé localement, mais la suppression de WordPress a échoué.";
+                            $messageType = "error"; // Change message type to error when WordPress sync fails
+                            
+                            // Add detailed error information for debugging
+                            if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                                $error_details = "";
+                                if (isset($wp_response['status'])) {
+                                    $error_details .= " Code HTTP: " . $wp_response['status'];
+                                }
+                                if (isset($wp_response['curl_error'])) {
+                                    $error_details .= " Erreur cURL: " . $wp_response['curl_error'];
+                                }
+                                if (isset($wp_response['error'])) {
+                                    // Safely handle different error formats
+                                    $error_str = '';
+                                    if (is_string($wp_response['error'])) {
+                                        $error_str = $wp_response['error'];
+                                    } elseif (is_array($wp_response['error'])) {
+                                        $error_str = json_encode($wp_response['error']);
+                                    } else {
+                                        $error_str = print_r($wp_response['error'], true);
+                                    }
+                                    $error_details .= " Réponse: " . substr($error_str, 0, 100) . "...";
+                                }
+                                
+                                if (!empty($error_details)) {
+                                    $message .= " Détails: " . $error_details;
+                                }
+                                
+                                // Add link to WordPress connection test page
+                                $message .= " <a href='test_wp_api.php' class='text-blue-400 hover:text-blue-300'>Tester la connexion WordPress</a>";
+                            }
                         }
                     } else {
                         $message = "L'article a été supprimé avec succès.";
+                        $messageType = "success";
                     }
-                    
-                    $messageType = "success";
                 }
                 
                 // Redirect to list view
@@ -311,7 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get all posts for listing
     if ($action === 'list') {
         try {
-            $stmt = $pdo->query("SELECT *, CASE WHEN wp_post_id IS NOT NULL THEN 'Oui' ELSE 'Non' END as wp_synced FROM blog_posts ORDER BY created_at DESC");
+            $stmt = $pdo->query("SELECT * FROM blog_posts ORDER BY created_at DESC");
             $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $message = "Erreur de base de données: " . $e->getMessage();
@@ -561,8 +656,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             </td>
                                             <td class="px-4 py-3 text-gray-400"><?php echo date('d/m/Y', strtotime($post['created_at'])); ?></td>
                                             <td class="px-4 py-3 text-sm">
-                                                <span class="<?php echo $post['wp_synced'] === 'Oui' ? 'text-green-500' : 'text-yellow-500'; ?>">
-                                                    <?php echo $post['wp_synced']; ?>
+                                                <span class="<?php echo !empty($post['wp_post_id']) ? 'text-green-500' : 'text-yellow-500'; ?>">
+                                                    <?php echo !empty($post['wp_post_id']) ? 'Oui' : 'Non'; ?>
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-right">
@@ -614,19 +709,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div class="md:col-span-2">
-                            <label for="title" class="block text-gray-300 mb-2">Titre de l'article *</label>
-                            <input type="text" id="title" name="title" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez le titre de l'article" value="<?php echo $post ? htmlspecialchars($post['title']) : ''; ?>">
+                            <label for="title" class="block text-gray-200 font-medium mb-2">Titre de l'article *</label>
+                            <input type="text" id="title" name="title" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-700 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez le titre de l'article" value="<?php echo $post ? htmlspecialchars($post['title']) : ''; ?>">
                         </div>
                         
                         <div>
-                            <label for="category" class="block text-gray-300 mb-2">Catégorie</label>
-                            <input type="text" id="category" name="category" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Ex: Rituels, Spiritualité, etc." value="<?php echo $post ? htmlspecialchars($post['category']) : ''; ?>">
+                            <label for="category" class="block text-gray-200 font-medium mb-2">Catégorie</label>
+                            <input type="text" id="category" name="category" class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-700 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Ex: Rituels, Spiritualité, etc." value="<?php echo $post ? htmlspecialchars($post['category']) : ''; ?>">
                         </div>
                     </div>
                     
                     <div class="mb-6">
-                        <label for="excerpt" class="block text-gray-300 mb-2">Extrait</label>
-                        <textarea id="excerpt" name="excerpt" rows="2" class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Bref résumé de l'article (affiché dans les listes)"><?php echo $post ? htmlspecialchars($post['excerpt']) : ''; ?></textarea>
+                        <label for="excerpt" class="block text-gray-200 font-medium mb-2">Extrait</label>
+                        <textarea id="excerpt" name="excerpt" rows="2" class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-700 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Bref résumé de l'article (affiché dans les listes)"><?php echo $post ? htmlspecialchars($post['excerpt']) : ''; ?></textarea>
                     </div>
                     
                     <div class="mb-6">
@@ -638,27 +733,119 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="featured_image" class="block text-white mb-2">Image à la une</label>
-                                <div class="flex flex-col space-y-4">
-                                    <div class="flex items-center space-x-4">
-                                        <div class="flex-1">
-                                            <input type="file" id="featured_image" name="featured_image" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white" accept="image/*">
-                                            <p class="text-gray-400 text-sm mt-1">Téléchargez une image depuis votre ordinateur</p>
-                                        </div>
-                                        <?php if (!empty($post['featured_image'])): ?>
-                                        <div class="w-24 h-24 bg-gray-800 rounded-lg overflow-hidden">
-                                            <img src="<?php echo (strpos($post['featured_image'], 'http') === 0) ? $post['featured_image'] : '../' . $post['featured_image']; ?>" alt="Image à la une" class="w-full h-full object-cover">
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <div class="flex-1 mt-2">
-                                        <label for="image_url" class="block text-white mb-2">OU utilisez une URL d'image</label>
-                                        <input type="url" id="image_url" name="image_url" placeholder="https://exemple.com/image.jpg" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
-                                        <p class="text-gray-400 text-sm mt-1">Si l'upload ne fonctionne pas, vous pouvez utiliser une URL d'image externe</p>
+                                <label for="featured_image" class="block text-gray-200 font-medium mb-2">Image à la une</label>
+                                
+                                <!-- Prévisualisation de l'image sélectionnée -->
+                                <div id="image-preview" class="mb-4 <?php echo empty($post['featured_image']) ? 'hidden' : ''; ?>">
+                                    <div class="relative w-full h-40 bg-gray-800 rounded-lg overflow-hidden">
+                                        <img id="preview-image" src="<?php echo !empty($post['featured_image']) ? ((strpos($post['featured_image'], 'http') === 0) ? $post['featured_image'] : '../' . $post['featured_image']) : ''; ?>" alt="Prévisualisation" class="w-full h-full object-cover">
+                                        <button type="button" onclick="clearImage()" class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </div>
                                 </div>
-                                <input type="hidden" name="current_image" value="<?php echo htmlspecialchars($post['featured_image'] ?? ''); ?>">
+                                
+                                <!-- Tabs pour sélection d'image -->
+                                <div class="flex border-b border-gray-700 mb-4 rounded-t-lg overflow-hidden">
+                                    <button type="button" id="tab-upload" class="flex-1 px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-800 transition-all duration-200 focus:outline-none flex items-center justify-center" onclick="switchImageTab('upload')">
+                                        <i class="fas fa-upload mr-2"></i> Upload
+                                    </button>
+                                    <button type="button" id="tab-library" class="flex-1 px-4 py-3 bg-purple-900 text-white flex items-center justify-center focus:outline-none" onclick="switchImageTab('library')">
+                                        <i class="fas fa-images mr-2"></i> Bibliothèque
+                                    </button>
+                                    <button type="button" id="tab-url" class="flex-1 px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-800 transition-all duration-200 focus:outline-none flex items-center justify-center" onclick="switchImageTab('url')">
+                                        <i class="fas fa-link mr-2"></i> URL
+                                    </button>
+                                </div>
+                                
+                                <!-- Tab content: Upload -->
+                                <div id="tab-content-upload" class="tab-content hidden">
+                                    <input type="file" id="featured_image" name="featured_image" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white" accept="image/*">
+                                    <p class="text-gray-400 text-sm mt-1">Téléchargez une image depuis votre ordinateur</p>
+                                </div>
+                                
+                                <!-- Tab content: Bibliothèque d'images -->
+                                <div id="tab-content-library" class="tab-content">
+                                    <div class="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2 bg-gray-800 rounded-lg mb-4">
+                                        <?php
+                                        // Charger les images de la bibliothèque
+                                        try {
+                                            // Vérifier si la table existe
+                                            $stmt = $pdo->prepare("SHOW TABLES LIKE 'image_library'");
+                                            $stmt->execute();
+                                            $table_exists = $stmt->rowCount() > 0;
+                                            
+                                            $library_images = [];
+                                            
+                                            if ($table_exists) {
+                                                $stmt = $pdo->prepare("SELECT * FROM image_library ORDER BY uploaded_at DESC LIMIT 12");
+                                                $stmt->execute();
+                                                $library_images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                            }
+                                            
+                                            // Charger aussi les images du dossier uploads si elles ne sont pas dans la base
+                                            $uploads_dir = '../uploads/images/';
+                                            if (is_dir($uploads_dir)) {
+                                                $files = scandir($uploads_dir);
+                                                foreach ($files as $file) {
+                                                    if ($file !== '.' && $file !== '..' && is_file($uploads_dir . $file)) {
+                                                        $fileinfo = pathinfo($uploads_dir . $file);
+                                                        if (in_array(strtolower($fileinfo['extension']), ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                                                            $path = 'uploads/images/' . $file;
+                                                            $exists = false;
+                                                            foreach ($library_images as $image) {
+                                                                if (basename($image['image_path']) === $file) {
+                                                                    $exists = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                            if (!$exists) {
+                                                                $library_images[] = [
+                                                                    'id' => 'file_' . $file,
+                                                                    'image_path' => $path,
+                                                                    'is_external' => 0
+                                                                ];
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            if (!empty($library_images)) {
+                                                foreach ($library_images as $image) {
+                                                    $image_url = $image['is_external'] ? $image['image_path'] : '../' . $image['image_path'];
+                                                    $image_path = $image['image_path'];
+                                                    echo '<div class="relative aspect-square bg-gray-900 rounded overflow-hidden cursor-pointer hover:opacity-90" onclick="selectImage(\''.htmlspecialchars($image_path).'\')">';
+                                                    echo '<img src="'.htmlspecialchars($image_url).'" alt="Image de la bibliothèque" class="w-full h-full object-cover">';
+                                                    echo '</div>';
+                                                }
+                                            } else {
+                                                echo '<div class="col-span-3 text-gray-400 text-center py-8">Aucune image disponible dans la bibliothèque. <a href="image_library.php" target="_blank" class="text-purple-400">Ajouter des images</a></div>';
+                                            }
+                                        } catch (PDOException $e) {
+                                            echo '<div class="col-span-3 text-red-400 text-center py-8">Erreur lors du chargement des images: ' . htmlspecialchars($e->getMessage()) . '</div>';
+                                        }
+                                        ?>
+                                    </div>
+                                    <div class="text-right">
+                                        <a href="image_library.php" target="_blank" class="text-purple-400 hover:text-purple-300 text-sm">
+                                            <i class="fas fa-plus-circle mr-1"></i> Ajouter plus d'images à la bibliothèque
+                                        </a>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tab content: URL d'image -->
+                                <div id="tab-content-url" class="tab-content hidden">
+                                    <input type="url" id="image_url" name="image_url" placeholder="https://exemple.com/image.jpg" class="w-full p-2 bg-gray-800 border border-gray-700 rounded-lg text-white mb-2" value="<?php echo isset($post['featured_image']) && substr($post['featured_image'], 0, 4) === 'http' ? htmlspecialchars($post['featured_image']) : ''; ?>">
+                                    <p class="text-gray-400 text-sm">
+                                        Entrez l'URL complète d'une image hébergée sur Internet
+                                    </p>
+                                    <button type="button" onclick="previewExternalImage()" class="mt-2 bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded">
+                                        <i class="fas fa-eye mr-1"></i> Prévisualiser
+                                    </button>
+                                </div>
+                                
+                                <input type="hidden" id="selected_image" name="current_image" value="<?php echo htmlspecialchars($post['featured_image'] ?? ''); ?>">
                             </div>
                             </div>
                             
@@ -678,18 +865,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <button type="submit" name="save_post" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
                                 <?php echo $action === 'edit' ? 'Mettre à jour' : 'Publier'; ?> l'article
                             </button>
-                                <option value="published" <?php echo ($post && $post['status'] === 'published') ? 'selected' : ''; ?>>Publié</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-end space-x-4">
-                        <a href="blog.php" class="px-6 py-3 rounded-full border border-purple-600 text-white font-medium hover:bg-purple-900 transition duration-300">
-                            Annuler
-                        </a>
-                        <button type="submit" name="save_post" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
-                            <?php echo $action === 'edit' ? 'Mettre à jour' : 'Publier'; ?> l'article
-                        </button>
+
                     </div>
                 </form>
             <?php endif; ?>
@@ -697,23 +873,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script>
         <?php if ($action !== 'list'): ?>
-        // Initialize Quill editor
+        // Configuration améliorée de Quill avec support des images
         var quill = new Quill('#editor', {
             theme: 'snow',
             modules: {
                 toolbar: [
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['link', 'image', 'video'],
-                    ['clean']
+                    ['bold', 'italic', 'underline', 'strike'],        // Formatage de texte
+                    ['blockquote', 'code-block'],                      // Blocs
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],        // Titres avec plus d'options
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],      // Listes
+                    [{ 'script': 'sub'}, { 'script': 'super' }],       // Exposant/Indice
+                    [{ 'color': [] }, { 'background': [] }],           // Couleur texte/fond
+                    [{ 'font': [] }],                                  // Police
+                    [{ 'size': ['small', false, 'large', 'huge'] }],   // Taille du texte
+                    [{ 'align': [] }],                                // Alignement
+                    ['link', 'image', 'video'],                        // Liens, Images et Vidéos
+                    ['clean']                                          // Effacer formatage
                 ]
             },
             placeholder: 'Rédigez votre article ici...'
+        });
+        
+        // Gestionnaire pour le téléchargement d'images
+        const toolbar = quill.getModule('toolbar');
+        toolbar.addHandler('image', function() {
+            // Ouvrir la bibliothèque d'images dans une popup
+            const popup = window.open('image_library.php', 'Bibliothèque d\'images', 'width=800,height=600');
+        });
+        
+        // Recevoir l'image sélectionnée depuis la bibliothèque
+        window.addEventListener('message', function(event) {
+            // Vérifier l'origine pour la sécurité
+            if (event.origin === window.location.origin) {
+                if (event.data && event.data.imagePath) {
+                    // Construire l'URL complète de l'image
+                    const imagePath = event.data.imagePath;
+                    let imageUrl;
+                    if (imagePath.startsWith('http')) {
+                        imageUrl = imagePath;
+                    } else {
+                        imageUrl = '../' + imagePath;
+                    }
+                    
+                    // Insérer l'image à la position du curseur dans l'éditeur
+                    const range = quill.getSelection();
+                    quill.insertEmbed(range ? range.index : 0, 'image', imageUrl);
+                }
+            }
         });
         
         // Update hidden form field before submit
@@ -721,6 +930,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.getElementById('content').value = quill.root.innerHTML;
         });
         <?php endif; ?>
+        
+        // Image tab switching
+        function switchImageTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Show the selected tab content
+            document.getElementById('tab-content-' + tabName).classList.remove('hidden');
+            
+            // Update tab button styles
+            document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+                tab.classList.remove('bg-purple-900', 'text-white');
+                tab.classList.add('text-gray-300');
+            });
+            
+            document.getElementById('tab-' + tabName).classList.add('bg-purple-900', 'text-white');
+            document.getElementById('tab-' + tabName).classList.remove('text-gray-300');
+        }
+        
+        // Select image from library
+        function selectImage(imagePath) {
+            // Update the hidden input
+            document.getElementById('selected_image').value = imagePath;
+            
+            // Update the preview image
+            const previewImage = document.getElementById('preview-image');
+            const imagePreview = document.getElementById('image-preview');
+            
+            // Determine if it's an external URL or local path
+            const isExternal = imagePath.startsWith('http');
+            previewImage.src = isExternal ? imagePath : '../' + imagePath;
+            
+            // Show the preview
+            imagePreview.classList.remove('hidden');
+        }
+        
+        // Preview external image from URL
+        function previewExternalImage() {
+            const imageUrl = document.getElementById('image_url').value;
+            
+            if (imageUrl) {
+                // Update the hidden input
+                document.getElementById('selected_image').value = imageUrl;
+                
+                // Update the preview
+                const previewImage = document.getElementById('preview-image');
+                const imagePreview = document.getElementById('image-preview');
+                
+                previewImage.src = imageUrl;
+                imagePreview.classList.remove('hidden');
+            } else {
+                alert('Veuillez entrer une URL d\'image valide.');
+            }
+        }
+        
+        // Clear selected image
+        function clearImage() {
+            document.getElementById('selected_image').value = '';
+            document.getElementById('image_url').value = '';
+            document.getElementById('image-preview').classList.add('hidden');
+        }
         
         // Delete confirmation modal
         function confirmDelete(postId, postTitle) {

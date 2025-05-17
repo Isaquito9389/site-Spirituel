@@ -7,100 +7,89 @@ error_reporting(E_ALL);
 // Inclusion de la connexion à la base de données
 require_once 'admin/includes/db_connect.php';
 
-// Vérification que l'ID de l'article est bien fourni
-if (!isset($_GET['id']) || empty($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: blog.php');
+// Vérification du slug de l'article
+$slug = '';
+
+// Récupérer l'URL requête
+$request_uri = $_SERVER['REQUEST_URI'];
+
+// Méthode 1: Vérifier si le slug est dans le chemin (format URL propre /blog/titre-article)
+$pattern = '/\/blog\/([^\/\?]+)/i';
+if (preg_match($pattern, $request_uri, $matches)) {
+    $slug = urldecode($matches[1]);
+}
+// Méthode 2: Vérifier si le slug est passé dans l'URL sous forme de paramètre GET (ancien format)
+elseif (isset($_GET['slug']) && !empty($_GET['slug'])) {
+    $slug = $_GET['slug'];
+    
+    // Si on arrive via le paramètre GET, on redirige vers l'URL propre
+    header('HTTP/1.1 301 Moved Permanently');
+    header('Location: /blog/' . urlencode($slug));
+    exit;
+}
+// Méthode 3: Format alternatif /blog-post.php/titre-article
+else {
+    $pattern = '/\/blog-post\.php\/([^\/\?]+)/i';
+    if (preg_match($pattern, $request_uri, $matches)) {
+        $slug = urldecode($matches[1]);
+        
+        // Rediriger vers l'URL propre
+        header('HTTP/1.1 301 Moved Permanently');
+        header('Location: /blog/' . urlencode($slug));
+        exit;
+    }
+}
+
+// Vérifier si un slug a été trouvé
+if (empty($slug)) {
+    header('Location: /blog.php');
     exit;
 }
 
-// Récupération de l'ID de l'article
-$post_id = intval($_GET['id']);
-
-// Récupération de l'article depuis la base de données
-$post = null;
+// Récupération de l'article par slug
 try {
-    $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE id = ? AND status = 'published'");
-    $stmt->execute([$post_id]);
+    $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE slug = ? AND status = 'published'");
+    $stmt->execute([$slug]);
     $post = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$post) {
         // Article non trouvé ou non publié
-        header('Location: blog.php');
+        header('Location: /blog.php');
         exit;
     }
     
-    // Incrémenter le compteur de vues
-    $views = isset($post['views']) ? $post['views'] + 1 : 1;
-    $update = $pdo->prepare("UPDATE blog_posts SET views = ? WHERE id = ?");
-    $update->execute([$views, $post_id]);
+    // Mise à jour du compteur de vues
+    $stmt = $pdo->prepare("UPDATE blog_posts SET views = views + 1 WHERE id = ?");
+    $stmt->execute([$post['id']]);
+    
+    // Récupération des articles similaires (même catégorie)
+    $similar_posts = [];
+    if (!empty($post['category'])) {
+        $stmt = $pdo->prepare("SELECT id, title, slug, featured_image FROM blog_posts 
+                              WHERE category = ? AND id != ? AND status = 'published' 
+                              ORDER BY created_at DESC LIMIT 3");
+        $stmt->execute([$post['category'], $post['id']]);
+        $similar_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    // Récupération des articles populaires pour la sidebar
+    $popular_posts = [];
+    $stmt = $pdo->query("SELECT id, title, slug, featured_image FROM blog_posts WHERE status = 'published' ORDER BY views DESC LIMIT 3");
+    $popular_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Récupération des catégories pour la sidebar
+    $categories = [];
+    $stmt = $pdo->query("SELECT * FROM blog_categories ORDER BY name");
+    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
-    // En cas d'erreur, on redirige vers la liste des articles
     error_log("Erreur lors de la récupération de l'article: " . $e->getMessage());
-    header('Location: blog.php');
+    header('Location: /blog.php');
     exit;
 }
 
-// Récupération des articles similaires (même catégorie)
-$similar_posts = [];
-if (!empty($post['category'])) {
-    try {
-        $stmt = $pdo->prepare("SELECT id, title, featured_image FROM blog_posts 
-                              WHERE category = ? AND id != ? AND status = 'published' 
-                              ORDER BY created_at DESC LIMIT 3");
-        $stmt->execute([$post['category'], $post_id]);
-        $similar_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        // Silencieux - ce n'est pas critique
-    }
-}
-
-// Récupérer les informations de l'auteur
-$author_name = "Admin";
-if (!empty($post['author_id'])) {
-    try {
-        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-        $stmt->execute([$post['author_id']]);
-        $author = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($author) {
-            $author_name = $author['username'];
-        }
-    } catch (PDOException $e) {
-        // Silencieux - ce n'est pas critique
-    }
-}
-
-// Récupération des tags si présents
-$tags = [];
-if (!empty($post['tags'])) {
-    $tags = explode(',', $post['tags']);
-    // Nettoyage des tags (suppression des espaces)
-    $tags = array_map('trim', $tags);
-}
-
-// Récupération des articles récents pour la sidebar
-$recent_posts = [];
-try {
-    $stmt = $pdo->prepare("SELECT id, title, featured_image FROM blog_posts 
-                          WHERE id != ? AND status = 'published' 
-                          ORDER BY created_at DESC LIMIT 4");
-    $stmt->execute([$post_id]);
-    $recent_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Silencieux - ce n'est pas critique
-}
-
-// Récupération des catégories pour la sidebar
-$categories = [];
-try {
-    $stmt = $pdo->query("SELECT * FROM blog_categories ORDER BY name");
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Silencieux - ce n'est pas critique
-}
-
 // Titre de la page
-$page_title = $post['title'] . " - Mystica Occulta";
+$page_title = isset($post['title']) ? $post['title'] . " - Mystica Occulta" : "Article - Mystica Occulta";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -109,10 +98,13 @@ $page_title = $post['title'] . " - Mystica Occulta";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <!-- Meta tags pour SEO -->
-    <meta name="description" content="<?php echo htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
-    <meta property="og:title" content="<?php echo htmlspecialchars($post['title']); ?>">
-    <meta property="og:description" content="<?php echo htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
-    <?php if (!empty($post['featured_image'])): ?>
+    <meta name="description" content="<?php echo isset($post['meta_description']) && !empty($post['meta_description']) ? htmlspecialchars($post['meta_description']) : htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
+    <?php if (isset($post['meta_keywords']) && !empty($post['meta_keywords'])): ?>
+    <meta name="keywords" content="<?php echo htmlspecialchars($post['meta_keywords']); ?>">
+    <?php endif; ?>
+    <meta property="og:title" content="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>">
+    <meta property="og:description" content="<?php echo isset($post['meta_description']) && !empty($post['meta_description']) ? htmlspecialchars($post['meta_description']) : htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
+    <?php if (isset($post['featured_image']) && !empty($post['featured_image'])): ?>
     <meta property="og:image" content="<?php echo htmlspecialchars($post['featured_image']); ?>">
     <?php endif; ?>
     
@@ -211,103 +203,160 @@ $page_title = $post['title'] . " - Mystica Occulta";
                 </div>
                 
                 <nav class="flex flex-wrap justify-center">
-                    <a href="index.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Accueil</a>
-                    <a href="rituals.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Rituels</a>
-                    <a href="blog.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300 border-b-2 border-pink-500">Blog</a>
-                    <a href="about.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">À propos</a>
-                    <a href="contact.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Contact</a>
+                    <a href="/index.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Accueil</a>
+                    <a href="/rituals.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Rituels</a>
+                    <a href="/blog.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300 border-b-2 border-pink-500">Blog</a>
+                    <a href="/about.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">À propos</a>
+                    <a href="/contact.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Contact</a>
                 </nav>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 py-12">
+    <main class="container mx-auto px-4 py-8">
         <div class="flex flex-col lg:flex-row">
             <!-- Article Content -->
             <div class="lg:w-3/4 lg:pr-8">
                 <!-- Breadcrumbs -->
                 <div class="mb-6 text-gray-400">
-                    <a href="index.php" class="hover:text-pink-400 transition">Accueil</a> &raquo; 
-                    <a href="blog.php" class="hover:text-pink-400 transition">Blog</a> 
-                    <?php if (!empty($post['category'])): ?>
-                    &raquo; <a href="blog.php?category=<?php echo urlencode($post['category']); ?>" class="hover:text-pink-400 transition"><?php echo htmlspecialchars($post['category']); ?></a>
+                    <a href="/index.php" class="hover:text-pink-400 transition">Accueil</a> &raquo; 
+                    <a href="/blog.php" class="hover:text-pink-400 transition">Blog</a> 
+                    <?php if (isset($post['category']) && !empty($post['category'])): ?>
+                    &raquo; <a href="/blog.php?category=<?php echo urlencode($post['category']); ?>" class="hover:text-pink-400 transition"><?php echo htmlspecialchars($post['category']); ?></a>
                     <?php endif; ?>
-                    &raquo; <span class="text-purple-400"><?php echo htmlspecialchars($post['title']); ?></span>
+                    &raquo; <span class="text-purple-400"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></span>
                 </div>
-                
+
                 <!-- Article Header -->
-                <div class="mb-8">
-                    <h1 class="text-4xl md:text-5xl font-cinzel font-bold text-white mb-4"><?php echo htmlspecialchars($post['title']); ?></h1>
-                    
-                    <div class="flex flex-wrap items-center text-gray-400 mb-6">
-                        <span class="mr-6 mb-2"><i class="far fa-user mr-2"></i><?php echo htmlspecialchars($author_name); ?></span>
-                        <span class="mr-6 mb-2"><i class="far fa-calendar mr-2"></i><?php echo date('d/m/Y', strtotime($post['created_at'])); ?></span>
-                        <?php if (!empty($post['category'])): ?>
-                        <span class="mr-6 mb-2"><i class="far fa-folder mr-2"></i><?php echo htmlspecialchars($post['category']); ?></span>
-                        <?php endif; ?>
-                        <span class="mb-2"><i class="far fa-eye mr-2"></i><?php echo isset($post['views']) ? $post['views'] : '0'; ?> vues</span>
+                <div class="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg overflow-hidden shadow-xl mb-8">
+                    <?php if (isset($post['featured_image']) && !empty($post['featured_image'])): ?>
+                    <div class="relative">
+                        <div class="aspect-w-16 aspect-h-9 md:aspect-h-7 lg:aspect-h-5 rounded-t-lg overflow-hidden">
+                            <?php if (substr($post['featured_image'], 0, 4) === 'http'): ?>
+                                <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>" class="w-full h-full object-cover transition-transform duration-1000 hover:scale-105">
+                            <?php else: ?>
+                                <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>" class="w-full h-full object-cover transition-transform duration-1000 hover:scale-105">
+                            <?php endif; ?>
+                            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+                        </div>
+                        <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8 lg:p-10">
+                            <h1 class="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-white mb-4 drop-shadow-lg"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></h1>
+                            
+                            <div class="flex flex-wrap items-center space-y-2 md:space-y-0 text-gray-200 text-sm">
+                                <?php if (isset($post['author']) && !empty($post['author'])): ?>
+                                <span class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
+                                    <i class="fas fa-user text-purple-300 mr-2"></i><?php echo htmlspecialchars($post['author']); ?>
+                                </span>
+                                <?php endif; ?>
+                                
+                                <span class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
+                                    <i class="far fa-calendar text-purple-300 mr-2"></i><?php echo date('d/m/Y', strtotime($post['created_at'])); ?>
+                                </span>
+                                
+                                <?php if (isset($post['category']) && !empty($post['category'])): ?>
+                                <a href="blog.php?category=<?php echo urlencode($post['category']); ?>" class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full hover:bg-purple-800 transition">
+                                    <i class="fas fa-tag text-purple-300 mr-2"></i><?php echo htmlspecialchars($post['category']); ?>
+                                </a>
+                                <?php endif; ?>
+                                
+                                <span class="inline-flex items-center px-3 py-1 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
+                                    <i class="far fa-eye text-purple-300 mr-2"></i><?php echo isset($post['views']) ? $post['views'] : '0'; ?> vues
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <?php if (!empty($post['featured_image'])): ?>
-                    <div class="mb-8 rounded-lg overflow-hidden shadow-lg">
-                        <?php if (substr($post['featured_image'], 0, 4) === 'http'): ?>
-                            <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" class="w-full h-auto">
-                        <?php else: ?>
-                            <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" class="w-full h-auto">
-                        <?php endif; ?>
+                    <?php else: ?>
+                    <div class="p-8">
+                        <h1 class="text-4xl md:text-5xl font-cinzel font-bold text-white mb-4"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></h1>
+                        
+                        <div class="flex flex-wrap items-center text-gray-300 text-sm">
+                            <?php if (isset($post['author']) && !empty($post['author'])): ?>
+                            <span class="inline-block mr-6"><i class="fas fa-user mr-2"></i><?php echo htmlspecialchars($post['author']); ?></span>
+                            <?php endif; ?>
+                            
+                            <span class="inline-block mr-6"><i class="far fa-calendar mr-2"></i><?php echo date('d/m/Y', strtotime($post['created_at'])); ?></span>
+                            
+                            <?php if (isset($post['category']) && !empty($post['category'])): ?>
+                            <a href="blog.php?category=<?php echo urlencode($post['category']); ?>" class="inline-block mr-6 hover:text-purple-300 transition">
+                                <i class="fas fa-tag mr-2"></i><?php echo htmlspecialchars($post['category']); ?>
+                            </a>
+                            <?php endif; ?>
+                            
+                            <span class="inline-block"><i class="far fa-eye mr-2"></i><?php echo isset($post['views']) ? $post['views'] : '0'; ?> vues</span>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
                 
+                <?php if (isset($post['excerpt']) && !empty($post['excerpt'])): ?>
+                <div class="bg-gray-900 bg-opacity-60 rounded-lg p-6 mb-8 text-lg text-gray-300 italic">
+                    <?php echo nl2br(htmlspecialchars($post['excerpt'])); ?>
+                </div>
+                <?php endif; ?>
+
                 <!-- Article Content -->
-                <div class="card p-8 rounded-lg shadow-lg mb-8">
-                    <div class="content-area text-gray-200">
-                        <?php echo $post['content']; ?>
+                <div class="bg-gray-900 bg-opacity-60 rounded-lg overflow-hidden shadow-xl p-6 md:p-8 mb-12">
+                    <div class="content-area prose prose-lg prose-invert max-w-none text-gray-200">
+                        <?php echo isset($post['content']) ? $post['content'] : ''; ?>
                     </div>
                 </div>
                 
-                <!-- Tags -->
-                <?php if (!empty($tags)): ?>
-                <div class="mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-3">Tags</h3>
+                <?php if (isset($post['tags']) && !empty($post['tags'])): ?>
+                <div class="mb-12">
+                    <div class="flex items-center mb-6">
+                        <div class="w-1 h-8 bg-purple-500 rounded mr-3"></div>
+                        <h3 class="text-xl font-bold text-white">Tags</h3>
+                    </div>
                     <div class="flex flex-wrap">
-                        <?php foreach ($tags as $tag): ?>
-                        <a href="blog.php?tag=<?php echo urlencode($tag); ?>" class="px-3 py-1 rounded-full bg-purple-900 text-white text-sm mr-2 mb-2 hover:bg-purple-800 transition">
-                            <?php echo htmlspecialchars($tag); ?>
+                        <?php 
+                        $tags = explode(',', $post['tags']);
+                        foreach ($tags as $tag): 
+                            $tag = trim($tag);
+                            if (!empty($tag)):
+                        ?>
+                        <a href="blog.php?tag=<?php echo urlencode($tag); ?>" class="bg-indigo-900 bg-opacity-60 text-white px-4 py-2 rounded-full text-sm mr-2 mb-2 hover:bg-indigo-800 transition-all transform hover:-translate-y-1 hover:shadow-lg border border-indigo-700">
+                            <i class="fas fa-hashtag text-xs opacity-70 mr-1"></i> <?php echo htmlspecialchars($tag); ?>
                         </a>
-                        <?php endforeach; ?>
+                        <?php 
+                            endif;
+                        endforeach; 
+                        ?>
                     </div>
                 </div>
                 <?php endif; ?>
-                
-                <!-- Social Sharing -->
-                <div class="mb-12">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-3">Partager cet article</h3>
-                    <div class="flex space-x-3">
-                        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition">
-                            <i class="fab fa-facebook-f"></i>
+
+                <!-- Share Buttons -->
+                <div class="mb-12 bg-gray-900 bg-opacity-60 rounded-lg p-6 md:p-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-1 h-8 bg-purple-500 rounded mr-3"></div>
+                        <h3 class="text-xl font-bold text-white">Partager cet article</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#1877F2] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
+                            <i class="fab fa-facebook-f mr-3"></i> <span class="font-medium">Facebook</span>
                         </a>
-                        <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($post['title']); ?>" target="_blank" class="w-10 h-10 rounded-full bg-blue-400 text-white flex items-center justify-center hover:bg-blue-500 transition">
-                            <i class="fab fa-twitter"></i>
+                        <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($post['title']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#1DA1F2] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
+                            <i class="fab fa-twitter mr-3"></i> <span class="font-medium">Twitter</span>
                         </a>
-                        <a href="https://wa.me/?text=<?php echo urlencode($post['title'] . ' - https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700 transition">
-                            <i class="fab fa-whatsapp"></i>
+                        <a href="https://wa.me/?text=<?php echo urlencode($post['title'] . ' - https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#25D366] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
+                            <i class="fab fa-whatsapp mr-3"></i> <span class="font-medium">WhatsApp</span>
                         </a>
-                        <a href="mailto:?subject=<?php echo urlencode($post['title']); ?>&body=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="w-10 h-10 rounded-full bg-gray-700 text-white flex items-center justify-center hover:bg-gray-800 transition">
-                            <i class="fas fa-envelope"></i>
+                        <a href="mailto:?subject=<?php echo urlencode($post['title']); ?>&body=<?php echo urlencode('J\'ai trouvé cet article intéressant et je voulais le partager avec toi: ' . $post['title'] . ' - https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" class="flex items-center px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all hover:shadow-lg">
+                            <i class="fas fa-envelope mr-3"></i> <span class="font-medium">Email</span>
                         </a>
                     </div>
                 </div>
-                
+
                 <!-- Similar Articles -->
                 <?php if (!empty($similar_posts)): ?>
                 <div class="mb-12">
-                    <h3 class="text-2xl font-cinzel font-bold text-white mb-6">Articles similaires</h3>
+                    <h2 class="text-3xl font-cinzel font-bold text-white mb-6">Articles similaires</h2>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <?php foreach ($similar_posts as $similar): ?>
-                        <a href="blog-post.php?id=<?php echo $similar['id']; ?>" class="card rounded-lg overflow-hidden shadow-lg hover:shadow-xl">
-                            <div class="relative h-40">
+                        <a href="/blog/<?php echo urlencode($similar['slug']); ?>" class="card rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300">
+                            <div class="relative h-48">
                                 <?php if (!empty($similar['featured_image'])): ?>
                                     <?php if (substr($similar['featured_image'], 0, 4) === 'http'): ?>
                                         <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" alt="<?php echo htmlspecialchars($similar['title']); ?>" class="w-full h-full object-cover">
@@ -319,8 +368,8 @@ $page_title = $post['title'] . " - Mystica Occulta";
                                 <?php endif; ?>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
                             </div>
-                            <div class="p-4">
-                                <h4 class="text-white font-bold hover:text-purple-300 transition"><?php echo htmlspecialchars($similar['title']); ?></h4>
+                            <div class="p-6">
+                                <h3 class="text-xl font-bold text-white mb-2"><?php echo htmlspecialchars($similar['title']); ?></h3>
                             </div>
                         </a>
                         <?php endforeach; ?>
@@ -343,31 +392,6 @@ $page_title = $post['title'] . " - Mystica Occulta";
                         </div>
                     </form>
                 </div>
-                
-                <!-- Recent Posts -->
-                <?php if (!empty($recent_posts)): ?>
-                <div class="card p-6 rounded-lg shadow-lg mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Articles Récents</h3>
-                    <div class="space-y-4">
-                        <?php foreach ($recent_posts as $recent): ?>
-                        <a href="blog-post.php?id=<?php echo $recent['id']; ?>" class="flex items-center group">
-                            <?php if (!empty($recent['featured_image'])): ?>
-                            <div class="w-16 h-16 rounded-lg overflow-hidden mr-4 flex-shrink-0">
-                                <?php if (substr($recent['featured_image'], 0, 4) === 'http'): ?>
-                                    <img src="<?php echo htmlspecialchars($recent['featured_image']); ?>" alt="<?php echo htmlspecialchars($recent['title']); ?>" class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <img src="<?php echo htmlspecialchars($recent['featured_image']); ?>" alt="<?php echo htmlspecialchars($recent['title']); ?>" class="w-full h-full object-cover">
-                                <?php endif; ?>
-                            </div>
-                            <?php endif; ?>
-                            <div>
-                                <h4 class="text-gray-300 group-hover:text-purple-400 transition"><?php echo htmlspecialchars($recent['title']); ?></h4>
-                            </div>
-                        </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
                 
                 <!-- Categories -->
                 <?php if (!empty($categories)): ?>
@@ -395,8 +419,43 @@ $page_title = $post['title'] . " - Mystica Occulta";
                 </div>
                 <?php endif; ?>
                 
-                <!-- Newsletter -->
+                <!-- Popular Posts -->
+                <?php if (!empty($popular_posts)): ?>
                 <div class="card p-6 rounded-lg shadow-lg mb-8">
+                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Articles Populaires</h3>
+                    <div class="space-y-4">
+                        <?php foreach ($popular_posts as $popular): ?>
+                        <a href="/blog/<?php echo urlencode($popular['slug']); ?>" class="flex items-center group">
+                            <?php if (!empty($popular['featured_image'])): ?>
+                            <div class="w-16 h-16 rounded-lg overflow-hidden mr-4 flex-shrink-0">
+                                <?php if (substr($popular['featured_image'], 0, 4) === 'http'): ?>
+                                    <img src="<?php echo htmlspecialchars($popular['featured_image']); ?>" alt="<?php echo htmlspecialchars($popular['title']); ?>" class="w-full h-full object-cover">
+                                <?php else: ?>
+                                    <img src="<?php echo htmlspecialchars($popular['featured_image']); ?>" alt="<?php echo htmlspecialchars($popular['title']); ?>" class="w-full h-full object-cover">
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+                            <div>
+                                <h4 class="text-gray-300 group-hover:text-purple-400 transition"><?php echo htmlspecialchars($popular['title']); ?></h4>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Social Media -->
+                <div class="card p-6 rounded-lg shadow-lg mb-8">
+                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Suivez-nous</h3>
+                    <div class="flex justify-center space-x-4">
+                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-900 text-white hover:bg-blue-800 transition"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-pink-700 text-white hover:bg-pink-600 transition"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+                
+                <!-- Newsletter -->
+                <div class="card p-6 rounded-lg shadow-lg">
                     <h3 class="text-xl font-cinzel font-bold text-white mb-4">Newsletter</h3>
                     <p class="text-gray-400 mb-4">Abonnez-vous pour recevoir nos derniers articles et offres spéciales.</p>
                     <form action="subscribe.php" method="post">
@@ -405,15 +464,6 @@ $page_title = $post['title'] . " - Mystica Occulta";
                             S'abonner
                         </button>
                     </form>
-                </div>
-                
-                <!-- Call to action -->
-                <div class="card p-6 rounded-lg shadow-lg">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Besoin d'aide ?</h3>
-                    <p class="text-gray-400 mb-4">Découvrez nos rituels et consultations personnalisées pour transformer votre vie.</p>
-                    <a href="rituals.php" class="block w-full button-magic py-2 rounded-lg text-white font-medium text-center">
-                        Voir les rituels
-                    </a>
                 </div>
             </div>
         </div>
@@ -431,11 +481,11 @@ $page_title = $post['title'] . " - Mystica Occulta";
                 <div>
                     <h3 class="text-xl font-bold mb-4 font-cinzel">Navigation</h3>
                     <ul class="space-y-2">
-                        <li><a href="index.php" class="text-gray-400 hover:text-purple-400 transition">Accueil</a></li>
-                        <li><a href="rituals.php" class="text-gray-400 hover:text-purple-400 transition">Rituels</a></li>
-                        <li><a href="blog.php" class="text-gray-400 hover:text-purple-400 transition">Blog</a></li>
-                        <li><a href="about.php" class="text-gray-400 hover:text-purple-400 transition">À propos</a></li>
-                        <li><a href="contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
+                        <li><a href="/index.php" class="text-gray-400 hover:text-purple-400 transition">Accueil</a></li>
+                        <li><a href="/rituals.php" class="text-gray-400 hover:text-purple-400 transition">Rituels</a></li>
+                        <li><a href="/blog.php" class="text-gray-400 hover:text-purple-400 transition">Blog</a></li>
+                        <li><a href="/about.php" class="text-gray-400 hover:text-purple-400 transition">À propos</a></li>
+                        <li><a href="/contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
                     </ul>
                 </div>
                 

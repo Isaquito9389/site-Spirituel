@@ -1,0 +1,70 @@
+# Activer le moteur de réécriture
+RewriteEngine On
+RewriteBase /
+
+# Rediriger vers HTTPS (version InfinityFree-safe)
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Rediriger la racine du site vers index.php (page d'accueil personnalisée)
+RewriteRule ^$ index.php [L]
+RewriteRule ^index\.html$ index.php [L,R=301]
+
+# Rediriger les requêtes WordPress vers le sous-dossier /wp
+# mais conserver notre page d'accueil personnalisée
+RewriteCond %{REQUEST_URI} !^/wp-admin
+RewriteCond %{REQUEST_URI} !^/wp-includes
+RewriteCond %{REQUEST_URI} !^/wp-content
+RewriteCond %{REQUEST_URI} ^/wp-(.*)$
+RewriteRule ^wp-(.*)$ wp/wp-$1 [L]
+
+# Support des URLs propres pour les articles de blog
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^blog/([^/]+)$ blog-post.php?slug=$1 [L,QSA]
+
+# Support des URLs propres pour les rituels
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ritual/([^/]+)$ ritual.php?slug=$1 [L,QSA]
+
+# Administration
+RewriteRule ^admin/?$ admin/index.php [L]
+RewriteRule ^admin/([a-z_]+)$ admin/$1.php [L]
+
+# Fichiers statiques -> .html fallback si fichier existe
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(.*)$ $1.html [L]
+
+# Empêcher accès aux fichiers sensibles (version Apache 2.4+)
+<FilesMatch "^\.(htaccess|htpasswd)$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "^(db_connect|auth_functions|setup_database|wp_api_connect)\.php$">
+  Require all denied
+</FilesMatch>
+
+# Types MIME
+AddType text/css .css
+AddType application/javascript .js
+
+# Compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
+</IfModule>
+
+# Cache expiration
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# Page d'erreur personnalisée
+ErrorDocument 500 /error500.php
+php_value display_errors On

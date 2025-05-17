@@ -152,7 +152,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
                         </a>
                     </li>
                     <li>
-                        <a href="consultations.php" class="nav-link flex items-center px-6 py-3 text-gray-300 hover:text-white">
+                        <a href="consultations_new.php" class="nav-link flex items-center px-6 py-3 text-gray-300 hover:text-white">
                             <i class="fas fa-calendar-alt w-6"></i>
                             <span>Consultations</span>
                         </a>
