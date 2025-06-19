@@ -314,9 +314,14 @@ if ($category) {
                         </p>
                         <div class="flex justify-between items-center">
                             <span class="text-pink-500 font-bold"><?php echo number_format($product['price'], 2); ?>€</span>
-                            <a href="product.php?slug=<?php echo urlencode($product['slug']); ?>" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
-                                <i class="fas fa-shopping-cart mr-1"></i> Voir détails
-                            </a>
+                            <div class="flex space-x-2">
+                                <button onclick="addToCart(<?php echo $product['id']; ?>, '<?php echo addslashes($product['title']); ?>', <?php echo $product['price']; ?>)" class="text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                    <i class="fas fa-cart-plus mr-1"></i> Acheter
+                                </button>
+                                <a href="product.php?slug=<?php echo urlencode($product['slug']); ?>" class="text-white bg-pink-600 hover:bg-pink-700 px-3 py-1 rounded-full text-sm transition duration-300">
+                                    <i class="fas fa-eye mr-1"></i> Détails
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -393,7 +398,7 @@ if ($category) {
                         </li>
                         <li class="flex items-start">
                             <i class="fab fa-whatsapp mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">+33 XX XX XX XX</span>
+                            <a href="https://wa.me/22967512021" target="_blank" class="text-gray-400 hover:text-purple-400 transition">+229 01 67 51 20 21</a>
                         </li>
                     </ul>
                     
@@ -411,16 +416,73 @@ if ($category) {
         </div>
     </footer>
 
+    <!-- Modal de confirmation de commande -->
+    <div id="orderConfirmModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 border border-purple-500 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+            <div class="text-center mb-4">
+                <i class="fas fa-shopping-cart text-purple-500 text-4xl mb-4"></i>
+                <h3 class="text-xl font-cinzel font-bold text-white" id="modalProductTitle">Confirmation de commande</h3>
+            </div>
+            <div class="text-gray-300 mb-6 text-center">
+                <p id="modalConfirmText">Vous allez commander ce produit. Continuer?</p>
+                <p class="mt-3 text-sm text-gray-400">Vous serez redirigé vers WhatsApp pour finaliser votre commande.</p>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <button id="cancelOrderBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors">
+                    <i class="fas fa-times mr-2"></i>Annuler
+                </button>
+                <button id="confirmOrderBtn" class="px-4 py-2 button-magic text-white rounded-full">
+                    <i class="fas fa-check mr-2"></i>Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript pour les fonctionnalités interactives -->
     <script>
-        // Panier d'achat (version simple)
-        let cart = JSON.parse(localStorage.getItem('mysticaCart')) || [];
+        // Variables globales pour stocker les informations de commande
+        let currentProductId = 0;
+        let currentProductName = '';
+        let currentProductPrice = 0;
         
         function addToCart(productId, productName, price) {
-            cart.push({id: productId, name: productName, price: price});
-            localStorage.setItem('mysticaCart', JSON.stringify(cart));
-            alert(`${productName} a été ajouté à votre panier!`);
+            // Stocker les informations du produit
+            currentProductId = productId;
+            currentProductName = productName;
+            currentProductPrice = price;
+            
+            // Mettre à jour le texte du modal
+            document.getElementById('modalProductTitle').textContent = 'Confirmation de commande';
+            document.getElementById('modalConfirmText').textContent = 
+                `Vous allez commander "${productName}" pour ${price}€. Continuer?`;
+            
+            // Afficher le modal
+            document.getElementById('orderConfirmModal').classList.remove('hidden');
         }
+        
+        // Gestionnaire pour le bouton de confirmation
+        document.getElementById('confirmOrderBtn').addEventListener('click', function() {
+            // Cacher le modal
+            document.getElementById('orderConfirmModal').classList.add('hidden');
+            
+            // Redirection vers WhatsApp avec le message préformaté
+            const phoneNumber = "22967512021"; // Format correct pour WhatsApp
+            const message = `Bonjour, je souhaite commander le produit: ${currentProductName} (${currentProductPrice}€). Pouvez-vous me donner les informations sur les moyens de paiement disponibles ?`;
+            window.location.href = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+        });
+        
+        // Gestionnaire pour le bouton d'annulation
+        document.getElementById('cancelOrderBtn').addEventListener('click', function() {
+            // Simplement cacher le modal
+            document.getElementById('orderConfirmModal').classList.add('hidden');
+        });
+        
+        // Fermer le modal si l'utilisateur clique en dehors
+        document.getElementById('orderConfirmModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                this.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>

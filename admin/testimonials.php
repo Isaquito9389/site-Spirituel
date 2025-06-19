@@ -58,8 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Créer la table si elle n'existe pas
                     $pdo->exec("CREATE TABLE testimonials (
                         id INT AUTO_INCREMENT PRIMARY KEY,
-                        name VARCHAR(255) NOT NULL,
+                        author_name VARCHAR(255) NOT NULL,
                         content TEXT NOT NULL,
+                        author_image VARCHAR(255) NULL,
+                        rating INT DEFAULT 5,
+                        service VARCHAR(255) NULL,
                         status VARCHAR(50) NOT NULL DEFAULT 'pending',
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -70,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($testimonial_id > 0) {
                     // Mise à jour d'un témoignage existant
                     $sql = "UPDATE testimonials SET 
-                            name = :name, 
+                            author_name = :name, 
                             content = :content, 
                             status = :status
                             WHERE id = :id";
@@ -79,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->bindParam(':id', $testimonial_id, PDO::PARAM_INT);
                 } else {
                     // Insertion d'un nouveau témoignage
-                    $sql = "INSERT INTO testimonials (name, content, status) 
+                    $sql = "INSERT INTO testimonials (author_name, content, status) 
                             VALUES (:name, :content, :status)";
                     
                     $stmt = $pdo->prepare($sql);
@@ -317,7 +320,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                     <tbody>
                         <?php foreach ($testimonials as $item): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['name']); ?></td>
+                                <td><?php echo htmlspecialchars($item['author_name'] ?? $item['name'] ?? ''); ?></td>
                                 <td><?php echo htmlspecialchars(substr($item['content'], 0, 100)) . (strlen($item['content']) > 100 ? '...' : ''); ?></td>
                                 <td>
                                     <span class="status status-<?php echo $item['status']; ?>">
@@ -366,7 +369,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                 
                 <div class="form-group">
                     <label for="name">Nom du client *</label>
-                    <input type="text" id="name" name="name" required value="<?php echo $testimonial ? htmlspecialchars($testimonial['name']) : ''; ?>">
+                    <input type="text" id="name" name="name" required value="<?php echo $testimonial ? htmlspecialchars($testimonial['author_name'] ?? $testimonial['name'] ?? '') : ''; ?>">
                 </div>
                 
                 <div class="form-group">

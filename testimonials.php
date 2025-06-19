@@ -25,8 +25,8 @@ $per_page = 10; // Nombre de témoignages par page
 $offset = ($page - 1) * $per_page;
 
 // Construction de la requête
-$sql_count = "SELECT COUNT(*) FROM testimonials WHERE status = 'published'";
-$sql = "SELECT * FROM testimonials WHERE status = 'published'";
+$sql_count = "SELECT COUNT(*) FROM testimonials WHERE status = 'approved'";
+$sql = "SELECT * FROM testimonials WHERE status = 'approved'";
 
 // Tri
 $sql .= " ORDER BY created_at DESC";
@@ -269,7 +269,7 @@ $page_title = "Témoignages de nos clients - Mystica Occulta";
                         </li>
                         <li class="flex items-start">
                             <i class="fab fa-whatsapp mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">+33 XX XX XX XX</span>
+                            <a href="https://wa.me/22967512021" target="_blank" class="text-gray-400 hover:text-purple-400 transition">+229 01 67 51 20 21</a>
                         </li>
                     </ul>
                     

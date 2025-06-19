@@ -107,12 +107,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" class="space-y-6">
             <div>
                 <label for="username" class="block text-gray-300 mb-2">Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom d'utilisateur">
+                <input type="text" id="username" name="username" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom d'utilisateur">
             </div>
             
             <div>
                 <label for="password" class="block text-gray-300 mb-2">Mot de passe</label>
-                <input type="password" id="password" name="password" required class="w-full px-4 py-3 rounded-lg bg-dark border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre mot de passe">
+                <input type="password" id="password" name="password" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre mot de passe">
             </div>
             
             <button type="submit" class="w-full btn-magic px-6 py-4 rounded-full text-white font-bold text-lg">

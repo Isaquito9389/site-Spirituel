@@ -342,7 +342,7 @@ $page_title = "Contact - Mystica Occulta";
                                 <i class="fab fa-whatsapp mt-1 mr-4 text-purple-400 text-xl"></i>
                                 <div>
                                     <h3 class="font-bold text-white">WhatsApp</h3>
-                                    <p class="text-gray-400">+33 XX XX XX XX</p>
+                                    <p class="text-gray-400"><a href="https://wa.me/22967512021" target="_blank" class="text-gray-400 hover:text-purple-400 transition">+229 67 51 20 21</a></p>
                                 </div>
                             </li>
                             
@@ -426,7 +426,7 @@ $page_title = "Contact - Mystica Occulta";
                         </li>
                         <li class="flex items-start">
                             <i class="fab fa-whatsapp mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">+33 XX XX XX XX</span>
+                            <a href="https://wa.me/22967512021" target="_blank" class="text-gray-400 hover:text-purple-400 transition">+229 67 51 20 21</a>
                         </li>
                     </ul>
                     

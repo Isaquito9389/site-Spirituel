@@ -7,7 +7,8 @@
  */
 
 // WordPress API configuration
-$wp_api_base_url = 'https://cantiques.kesug.com/wp/wp-json/wp/v2/'; // Verified WordPress API endpoint with correct subdirectory path
+$wp_api_base_url = 'https://cantiques.kesug.com/wp-json/wc/v3/'; // WooCommerce REST API endpoint
+$wp_api_base_url_v2 = 'https://cantiques.kesug.com/wp-json/wp/v2/'; // WordPress REST API endpoint
 
 // Validate and sanitize the WordPress API base URL
 if (!filter_var($wp_api_base_url, FILTER_VALIDATE_URL)) {
@@ -34,9 +35,10 @@ function get_wp_api_token() {
         return false;
     }
     
-    // Log partial credentials for security
+    // Log partiel pour la sécurité
     error_log("WordPress API Authentication: User = " . $wp_user . ", Password Length = " . strlen($password_no_spaces));
     
+    // Pour WooCommerce REST API, on utilise l'authentification Basic avec la clé API
     return base64_encode($wp_user . ':' . $password_no_spaces);
 }
 
@@ -368,146 +370,171 @@ function sanitize_slug($string) {
 }
 
 /**
- * Test WordPress API connection
+ * Synchronise un produit avec WordPress/WooCommerce
  * 
- * @return array Test results with connection status and details
+ * @param array $product Données du produit à synchroniser
+ * @return array Réponse de l'API
  */
-function test_wordpress_connection() {
-    error_log("Testing WordPress API connection...");
+function sync_product_to_wordpress($product) {
+    global $wp_api_base_url;
     
-    // Test 1: Get WordPress info
-    $wp_api_base_url_parts = explode('/wp/v2/', $GLOBALS['wp_api_base_url']);
-    $wp_root_api = $wp_api_base_url_parts[0];
-    
-    $ch = curl_init($wp_root_api);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); // Disable host verification
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Follow redirects
-    curl_setopt($ch, CURLOPT_MAXREDIRS, 5); // Maximum number of redirects to follow
-    curl_setopt($ch, CURLOPT_VERBOSE, true); // Enable verbose output for debugging
-    
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_errno($ch) ? curl_error($ch) : null;
-    
-    curl_close($ch);
-    
-    $test1 = [
-        'name' => 'WordPress Root API',
-        'url' => $wp_root_api,
-        'success' => ($status >= 200 && $status < 300),
-        'status' => $status,
-        'error' => $curl_error,
-        'response' => substr($response, 0, 500) // Limit response size
+    // Préparer les données pour WooCommerce
+    $wc_product = [
+        'name' => $product['title'],
+        'description' => $product['description'],
+        'regular_price' => (string) $product['price'],
+        'manage_stock' => true,
+        'stock_quantity' => (int) $product['stock'],
+        'stock_status' => $product['stock'] > 0 ? 'instock' : 'outofstock',
+        'status' => $product['status'] === 'published' ? 'publish' : 'draft',
+        'categories' => [
+            ['name' => $product['category']]
+        ]
     ];
     
-    // Test 2: Get posts with authentication
-    $test2_result = get_from_wordpress('posts', ['per_page' => 1]);
-    $test2 = [
-        'name' => 'WordPress Posts API with Auth',
-        'url' => $GLOBALS['wp_api_base_url'] . 'posts?per_page=1',
-        'success' => $test2_result['success'],
-        'status' => $test2_result['status'] ?? 0,
-        'error' => $test2_result['curl_error'] ?? null,
-        'response' => isset($test2_result['error']) ? substr($test2_result['error'], 0, 500) : null
-    ];
+    // Ajouter l'image si disponible
+    if (!empty($product['featured_image'])) {
+        $wc_product['images'] = [
+            ['src' => $product['featured_image']]
+        ];
+    }
     
-    // Test 3: Check user permissions
-    $test3_result = get_from_wordpress('users/me');
-    $test3 = [
-        'name' => 'WordPress User Permissions',
-        'url' => $GLOBALS['wp_api_base_url'] . 'users/me',
-        'success' => $test3_result['success'],
-        'status' => $test3_result['status'] ?? 0,
-        'error' => $test3_result['curl_error'] ?? null,
-        'response' => isset($test3_result['data']) ? json_encode($test3_result['data']) : null
-    ];
+    // Déterminer la méthode HTTP et l'URL
+    $method = 'POST';
+    $endpoint = 'products';
     
-    return [
-        'tests' => [$test1, $test2, $test3],
-        'overall_success' => ($test1['success'] && $test2['success'] && $test3['success']),
-        'timestamp' => date('Y-m-d H:i:s')
-    ];
+    if (!empty($product['wp_post_id'])) {
+        // Mise à jour d'un produit existant
+        $endpoint .= '/' . $product['wp_post_id'];
+        $method = 'PUT';
+    }
+    
+    // Envoyer la requête à l'API WooCommerce
+    return send_to_wordpress($endpoint, $wc_product, $method);
 }
 
- 
- / * * 
-   *   T e s t   W o r d P r e s s   A P I   c o n n e c t i o n 
-   *   
-   *   @ r e t u r n   a r r a y   T e s t   r e s u l t s   w i t h   o v e r a l l   s u c c e s s   a n d   d e t a i l e d   c h e c k s 
-   * / 
- f u n c t i o n   t e s t _ w o r d p r e s s _ c o n n e c t i o n ( )   { 
-         g l o b a l   \ ,   \ ; 
-         
-         / /   I n i t i a l i z e   t e s t   r e s u l t s 
-         \   =   [ 
-                 ' o v e r a l l _ s u c c e s s '   = >   t r u e , 
-                 ' c h e c k s '   = >   [ ] 
-         ] ; 
-         
-         / /   1 .   C h e c k   B a s e   U R L   V a l i d i t y 
-         i f   ( e m p t y ( \ ) )   { 
-                 \ [ ' o v e r a l l _ s u c c e s s ' ]   =   f a l s e ; 
-                 \ [ ' c h e c k s ' ] [ ]   =   [ 
-                         ' n a m e '   = >   ' U R L   C o n f i g u r a t i o n ' , 
-                         ' s u c c e s s '   = >   f a l s e , 
-                         ' m e s s a g e '   = >   ' W o r d P r e s s   A P I   b a s e   U R L   i s   n o t   c o n f i g u r e d ' 
-                 ] ; 
-         }   e l s e   { 
-                 \ [ ' c h e c k s ' ] [ ]   =   [ 
-                         ' n a m e '   = >   ' U R L   C o n f i g u r a t i o n ' , 
-                         ' s u c c e s s '   = >   t r u e , 
-                         ' m e s s a g e '   = >   ' W o r d P r e s s   A P I   b a s e   U R L   i s   s e t :   '   .   \ 
-                 ] ; 
-         } 
-         
-         / /   2 .   T e s t   A u t h e n t i c a t i o n 
-         \   =   g e t _ w p _ a p i _ t o k e n ( ) ; 
-         i f   ( \   = = =   f a l s e )   { 
-                 \ [ ' o v e r a l l _ s u c c e s s ' ]   =   f a l s e ; 
-                 \ [ ' c h e c k s ' ] [ ]   =   [ 
-                         ' n a m e '   = >   ' A u t h e n t i c a t i o n ' , 
-                         ' s u c c e s s '   = >   f a l s e , 
-                         ' m e s s a g e '   = >   ' I n v a l i d   W o r d P r e s s   A P I   c r e d e n t i a l s ' 
-                 ] ; 
-         }   e l s e   { 
-                 \ [ ' c h e c k s ' ] [ ]   =   [ 
-                         ' n a m e '   = >   ' A u t h e n t i c a t i o n ' , 
-                         ' s u c c e s s '   = >   t r u e , 
-                         ' m e s s a g e '   = >   ' A P I   c r e d e n t i a l s   v a l i d a t e d   f o r   u s e r :   '   .   \ 
-                 ] ; 
-         } 
-         
-         / /   3 .   T e s t   A P I   C o n n e c t i v i t y   b y   f e t c h i n g   c a t e g o r i e s 
-         t r y   { 
-                 \   =   g e t _ f r o m _ w o r d p r e s s ( ' c a t e g o r i e s ' ,   [ ' p e r _ p a g e '   = >   1 ] ) ; 
-                 
-                 i f   ( \ [ ' s u c c e s s ' ] )   { 
-                         \ [ ' c h e c k s ' ] [ ]   =   [ 
-                                 ' n a m e '   = >   ' A P I   C o n n e c t i v i t y ' , 
-                                 ' s u c c e s s '   = >   t r u e , 
-                                 ' m e s s a g e '   = >   ' S u c c e s s f u l l y   r e t r i e v e d   W o r d P r e s s   c a t e g o r i e s ' 
-                         ] ; 
-                 }   e l s e   { 
-                         \ [ ' o v e r a l l _ s u c c e s s ' ]   =   f a l s e ; 
-                         \ [ ' c h e c k s ' ] [ ]   =   [ 
-                                 ' n a m e '   = >   ' A P I   C o n n e c t i v i t y ' , 
-                                 ' s u c c e s s '   = >   f a l s e , 
-                                 ' m e s s a g e '   = >   ' F a i l e d   t o   r e t r i e v e   c a t e g o r i e s .   E r r o r :   '   .   j s o n _ e n c o d e ( \ [ ' e r r o r ' ] ) 
-                         ] ; 
-                 } 
-         }   c a t c h   ( E x c e p t i o n   \ )   { 
-                 \ [ ' o v e r a l l _ s u c c e s s ' ]   =   f a l s e ; 
-                 \ [ ' c h e c k s ' ] [ ]   =   [ 
-                         ' n a m e '   = >   ' A P I   C o n n e c t i v i t y ' , 
-                         ' s u c c e s s '   = >   f a l s e , 
-                         ' m e s s a g e '   = >   ' E x c e p t i o n   d u r i n g   A P I   t e s t :   '   .   \ - > g e t M e s s a g e ( ) 
-                 ] ; 
-         } 
-         
-         r e t u r n   \ ; 
- } 
- 
- 
+/**
+ * Supprime un produit WordPress/WooCommerce
+ * 
+ * @param int $wp_post_id ID du produit dans WordPress
+ * @return array Réponse de l'API
+ */
+function delete_wordpress_product($wp_post_id) {
+    // Utiliser true pour forcer la suppression définitive (au lieu de la corbeille)
+    return send_to_wordpress('products/' . $wp_post_id . '?force=true', [], 'DELETE');
+}
+
+/**
+ * Recherche un produit WordPress par son slug
+ * 
+ * @param string $slug Slug du produit
+ * @return array|false Données du produit ou false si non trouvé
+ */
+function find_wp_product_by_slug($slug) {
+    global $wp_api_base_url;
+    
+    $response = get_from_wordpress('products', ['slug' => $slug]);
+    
+    if ($response['success'] && !empty($response['data'])) {
+        return $response['data'][0]; // Retourne le premier produit trouvé
+    }
+    
+    return false;
+}
+
+/**
+ * Met à jour l'ID WordPress d'un produit dans la base de données locale
+ * 
+ * @param int $product_id ID du produit dans la base locale
+ * @param int $wp_post_id ID du produit dans WordPress
+ * @return bool Succès de la mise à jour
+ */
+function update_product_wp_id($product_id, $wp_post_id) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE products SET wp_post_id = ? WHERE id = ?");
+        return $stmt->execute([$wp_post_id, $product_id]);
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la mise à jour de l'ID WordPress du produit: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Teste la connexion à l'API WordPress
+ * 
+ * @return array Résultats du test
+ */
+function test_wordpress_connection() {
+    $results = [
+        'overall_success' => true,
+        'checks' => [],
+        'timestamp' => date('Y-m-d H:i:s')
+    ];
+    
+    // 1. Check Base URL Validity
+    global $wp_api_base_url, $wp_user;
+    
+    if (empty($wp_api_base_url)) {
+        $results['overall_success'] = false;
+        $results['checks'][] = [
+            'name' => 'URL Configuration',
+            'success' => false,
+            'message' => 'WordPress API base URL is not configured'
+        ];
+    } else {
+        $results['checks'][] = [
+            'name' => 'URL Configuration',
+            'success' => true,
+            'message' => 'WordPress API base URL is set: ' . $wp_api_base_url
+        ];
+    }
+    
+    // 2. Test Authentication
+    $auth_token = get_wp_api_token();
+    if ($auth_token === false) {
+        $results['overall_success'] = false;
+        $results['checks'][] = [
+            'name' => 'Authentication',
+            'success' => false,
+            'message' => 'Invalid WordPress API credentials'
+        ];
+    } else {
+        $results['checks'][] = [
+            'name' => 'Authentication',
+            'success' => true,
+            'message' => 'API credentials validated for user: ' . $wp_user
+        ];
+    }
+    
+    // 3. Test API Connectivity by fetching categories
+    try {
+        $response = get_from_wordpress('categories', ['per_page' => 1]);
+        
+        if ($response['success']) {
+            $results['checks'][] = [
+                'name' => 'API Connectivity',
+                'success' => true,
+                'message' => 'Successfully retrieved WordPress categories'
+            ];
+        } else {
+            $results['overall_success'] = false;
+            $results['checks'][] = [
+                'name' => 'API Connectivity',
+                'success' => false,
+                'message' => 'Failed to retrieve categories. Error: ' . json_encode($response['error'])
+            ];
+        }
+    } catch (Exception $e) {
+        $results['overall_success'] = false;
+        $results['checks'][] = [
+            'name' => 'API Connectivity',
+            'success' => false,
+            'message' => 'Exception during API test: ' . $e->getMessage()
+        ];
+    }
+    
+    return $results;
+}
+?>
