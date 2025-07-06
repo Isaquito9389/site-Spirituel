@@ -1,9 +1,7 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage forcé des erreurs PHP pour le debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_start();
 
 // Check if user is logged in
@@ -42,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         $site_title = trim($_POST['site_title']);
         $site_description = trim($_POST['site_description']);
         $contact_email = trim($_POST['contact_email']);
-        
+
         // Mettre à jour les paramètres dans la base de données
         // Vérifier si la table settings existe
         $stmt = $pdo->query("SHOW TABLES LIKE 'settings'");
@@ -55,14 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
         }
-        
+
         // Pour chaque paramètre, insérer ou mettre à jour
         $params = [
             'site_title' => $site_title,
             'site_description' => $site_description,
             'contact_email' => $contact_email
         ];
-        
+
         foreach ($params as $key => $value) {
             // Vérifier si le paramètre existe déjà
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM settings WHERE setting_key = ?");
@@ -77,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
                 $stmt->execute([$key, $value]);
             }
         }
-        
+
         $message = "Les paramètres ont été mis à jour avec succès.";
         $messageType = "success";
     } catch (PDOException $e) {
@@ -108,21 +106,21 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paramètres du Site - Version Simple</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background-color: #171717; 
-            color: #e0e0e0; 
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #171717;
+            color: #e0e0e0;
         }
         h1, h2 { color: #c0c0c0; }
-        .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 20px; 
-            padding-bottom: 10px; 
-            border-bottom: 1px solid #444; 
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
         }
         .button {
             display: inline-block;
@@ -137,18 +135,18 @@ try {
         .button:hover { background-color: #6a0dad; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; }
-        input, textarea { 
-            width: 100%; 
-            padding: 8px; 
-            border: 1px solid #444; 
-            background-color: #222; 
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #444;
+            background-color: #222;
             color: #e0e0e0;
             border-radius: 4px;
         }
-        .message { 
-            padding: 10px; 
-            margin-bottom: 15px; 
-            border-radius: 4px; 
+        .message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
         }
         .message-error { background-color: rgba(220, 38, 38, 0.3); }
         .message-success { background-color: rgba(22, 163, 74, 0.3); }
@@ -168,13 +166,13 @@ try {
             <a href="?logout=true" class="button">Déconnexion</a>
         </div>
     </div>
-    
+
     <?php if (!empty($message)): ?>
         <div class="message <?php echo $messageType === 'success' ? 'message-success' : 'message-error'; ?>">
             <?php echo $message; ?>
         </div>
     <?php endif; ?>
-    
+
     <div class="card">
         <h2>Paramètres généraux</h2>
         <form method="post" action="settings.php">
@@ -182,22 +180,22 @@ try {
                 <label for="site_title">Titre du site</label>
                 <input type="text" id="site_title" name="site_title" value="<?php echo htmlspecialchars($settings['site_title'] ?? 'Mystica Occulta'); ?>">
             </div>
-            
+
             <div class="form-group">
                 <label for="site_description">Description du site</label>
                 <textarea id="site_description" name="site_description" rows="3"><?php echo htmlspecialchars($settings['site_description'] ?? 'Voyance, rituels et magie'); ?></textarea>
             </div>
-            
+
             <div class="form-group">
                 <label for="contact_email">Email de contact</label>
                 <input type="email" id="contact_email" name="contact_email" value="<?php echo htmlspecialchars($settings['contact_email'] ?? 'contact@exemple.com'); ?>">
             </div>
-            
+
             <div style="text-align: right; margin-top: 20px;">
                 <button type="submit" name="save_settings" class="button">Enregistrer les paramètres</button>
             </div>
         </form>
     </div>
-    
+
 </body>
 </html>

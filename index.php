@@ -1,35 +1,86 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
+
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Inclure la connexion à la base de données avant tout
+require_once 'includes/db_connect.php';
 
 // Définir ce fichier comme la page d'accueil de WordPress
 define('WP_USE_THEMES', false);
 
 // Vérifier si WordPress est installé dans le sous-dossier /wp
 if (file_exists('./wp/wp-load.php')) {
-    // Charger WordPress
-    require_once('./wp/wp-load.php');
-    
-    // Indiquer que nous sommes sur la page d'accueil
+    // Définir une constante pour indiquer que nous sommes sur la page d'accueil
     define('IS_HOME', true);
+
+    // Définir WP_USE_THEMES à false pour éviter de charger le thème WordPress
+    if (!defined('WP_USE_THEMES')) {
+        define('WP_USE_THEMES', false);
+    }
+
+    // Sauvegarder les constantes de base de données actuelles
+    $our_db_constants = [];
+    if (defined('DB_NAME')) $our_db_constants['DB_NAME'] = DB_NAME;
+    if (defined('DB_USER')) $our_db_constants['DB_USER'] = DB_USER;
+    if (defined('DB_PASS')) $our_db_constants['DB_PASS'] = DB_PASS;
+    if (defined('DB_HOST')) $our_db_constants['DB_HOST'] = DB_HOST;
+    if (defined('DB_CHARSET')) $our_db_constants['DB_CHARSET'] = DB_CHARSET;
+
+    // Charger WordPress en utilisant un hack pour éviter les redéfinitions de constantes
+    try {
+        // Modifier le contenu de wp-config.php temporairement en mémoire
+        $wp_config_file = file_get_contents('./wp/wp-config.php');
+        $modified_wp_config = preg_replace(
+            [
+                "/define\(\s*'DB_NAME',\s*'([^']*)'\s*\);/",
+                "/define\(\s*'DB_USER',\s*'([^']*)'\s*\);/",
+                "/define\(\s*'DB_PASSWORD',\s*'([^']*)'\s*\);/",
+                "/define\(\s*'DB_HOST',\s*'([^']*)'\s*\);/",
+                "/define\(\s*'DB_CHARSET',\s*'([^']*)'\s*\);/"
+            ],
+            [
+                "if (!defined('DB_NAME')) define('DB_NAME', '$1');",
+                "if (!defined('DB_USER')) define('DB_USER', '$1');",
+                "if (!defined('DB_PASSWORD')) define('DB_PASSWORD', '$1');",
+                "if (!defined('DB_HOST')) define('DB_HOST', '$1');",
+                "if (!defined('DB_CHARSET')) define('DB_CHARSET', '$1');"
+            ],
+            $wp_config_file
+        );
+
+        // Écrire le fichier modifié temporairement
+        $temp_config_file = tempnam(sys_get_temp_dir(), 'wp_config_');
+        file_put_contents($temp_config_file, $modified_wp_config);
+
+        // Inclure le fichier temporaire au lieu du wp-config.php original
+        define('ABSPATH', dirname(__FILE__) . '/wp/');
+        require_once($temp_config_file);
+
+        // Inclure wp-settings.php pour charger WordPress
+        require_once('./wp/wp-settings.php');
+
+        // Supprimer le fichier temporaire
+        unlink($temp_config_file);
+    } catch (Exception $e) {
+        // Log d'erreur si le chargement de WordPress échoue
+        // Restaurer nos constantes de base de données
+        foreach ($our_db_constants as $const => $value) {
+            if (!defined($const)) define($const, $value);
+        }
+    }
 } else {
     // Log d'erreur si WordPress n'est pas trouvé
-    error_log("WordPress n'est pas installé dans le sous-dossier /wp");
-}
+    }
 
 // Inclure le fichier qui récupère les images du site
 $site_images = require_once 'get_site_images.php';
-
-// Inclure la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
 
 // Récupérer les derniers rituels
 function get_latest_rituals($limit = 3) {
     global $pdo;
     $rituals = [];
-    
+
     try {
         // Récupérer les rituels publiés
         $stmt = $pdo->prepare("SELECT * FROM rituals WHERE status = 'published' ORDER BY created_at DESC LIMIT :limit");
@@ -37,9 +88,8 @@ function get_latest_rituals($limit = 3) {
         $stmt->execute();
         $rituals = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération des rituels: " . $e->getMessage());
-    }
-    
+        }
+
     return $rituals;
 }
 
@@ -47,7 +97,7 @@ function get_latest_rituals($limit = 3) {
 function get_latest_blog_posts($limit = 3) {
     global $pdo;
     $posts = [];
-    
+
     try {
         // Récupérer les articles publiés
         $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE status = 'published' ORDER BY created_at DESC LIMIT :limit");
@@ -55,9 +105,8 @@ function get_latest_blog_posts($limit = 3) {
         $stmt->execute();
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération des articles: " . $e->getMessage());
-    }
-    
+        }
+
     return $posts;
 }
 
@@ -72,7 +121,7 @@ $html_content = file_get_contents('index.html');
 if (isset($site_images['background_main'])) {
     // Vérifier si le chemin est absolu ou relatif
     $background_image = $site_images['background_main'];
-    
+
     // Vérifier si le fichier existe réellement
     if (!file_exists($background_image)) {
         // Essayer avec un chemin relatif
@@ -111,11 +160,11 @@ $custom_styles = <<<CSS
     .ritual-card .w-full.h-48 {
         height: 13rem !important; /* Augmenter la hauteur de 48px (3rem) à 52px (13rem) */
     }
-    
+
     .w-full.h-96 {
         height: 25rem !important; /* Augmenter la hauteur de 384px (24rem) à 400px (25rem) */
     }
-    
+
     /* Ajustements pour les images dans les cadres */
     .ritual-card .w-full.h-48 img,
     .w-full.h-96 img {
@@ -123,28 +172,28 @@ $custom_styles = <<<CSS
         object-position: center 40%; /* Montrer plus de contenu vers le bas */
         transform: scale(1.05); /* Légèrement agrandir pour éviter les coupures aux bords */
     }
-    
+
     /* Animation au survol */
     .overflow-hidden:hover img.object-cover {
         transform: scale(1.15); /* Zoom un peu plus au survol */
         transition: transform 0.5s ease;
     }
-    
+
     /* Transition douce pour toutes les images */
     .overflow-hidden img {
         transition: transform 0.3s ease, opacity 0.3s ease;
     }
-    
+
     /* Ajustement pour les images de produits dans la boutique */
     #shop .w-full.h-48 img {
         object-position: center 35%; /* Ajuster la position verticale pour mieux voir les produits */
     }
-    
+
     /* Ajustement pour les images de blog */
     #blog .ritual-card .w-full.h-48 img {
         object-position: center 30%; /* Ajuster pour voir le contenu principal des images de blog */
     }
-    
+
     /* Ajustement pour les images de fond */
     [style*="background-image"] {
         background-position: center 40% !important; /* Montrer plus de contenu vers le bas pour les images de fond */
@@ -189,7 +238,7 @@ if (function_exists('add_action')) {
             exit;
         }
     });
-    
+
     // Exécuter les actions WordPress si nécessaire
     if (function_exists('do_action')) {
         do_action('wp');
@@ -205,7 +254,7 @@ if (!empty($rituals)) {
         $title = htmlspecialchars($ritual['title']);
         $excerpt = htmlspecialchars($ritual['excerpt']);
         $slug = htmlspecialchars($ritual['slug']);
-        
+
         $rituals_html .= <<<HTML
         <div class="ritual-card rounded-xl overflow-hidden">
             <div class="relative">
@@ -226,7 +275,7 @@ if (!empty($rituals)) {
         </div>
         HTML;
     }
-    
+
     // Remplacer la section des rituels par le contenu dynamique
     $ritual_section_pattern = '/<div class="grid grid-cols-1 md:grid-cols-3 gap-8">(.*?)<\/div>\s*<div class="text-center mt-12">/s';
     $ritual_replacement = '<div class="grid grid-cols-1 md:grid-cols-3 gap-8">' . $rituals_html . '</div><div class="text-center mt-12">';
@@ -246,7 +295,7 @@ if (!empty($blog_posts)) {
         $excerpt = strlen($excerpt_text) > $max_length ? htmlspecialchars(substr($excerpt_text, 0, $max_length)) . '...' : htmlspecialchars($excerpt_text);
         $slug = htmlspecialchars($post['slug']);
         $date = date('d M Y', strtotime($post['created_at']));
-        
+
         $blog_html .= <<<HTML
         <div class="ritual-card rounded-xl overflow-hidden">
             <div class="w-full h-48 overflow-hidden">
@@ -265,7 +314,7 @@ if (!empty($blog_posts)) {
         </div>
         HTML;
     }
-    
+
     // Remplacer la section du blog par le contenu dynamique
     $blog_section_pattern = '/<section id="blog".*?<div class="grid grid-cols-1 md:grid-cols-3 gap-8">(.*?)<\/div>\s*<div class="text-center mt-12">/s';
     $blog_replacement = '<section id="blog" class="py-20 bg-gradient-to-b from-dark to-purple-900"><div class="container mx-auto px-4"><div class="text-center mb-16"><h2 class="font-cinzel text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Blog Spirituel</h2><p class="text-xl text-gray-300 max-w-3xl mx-auto">Explorez nos articles sur la spiritualité, la magie et le développement personnel.</p></div><div class="grid grid-cols-1 md:grid-cols-3 gap-8">' . $blog_html . '</div><div class="text-center mt-12">';

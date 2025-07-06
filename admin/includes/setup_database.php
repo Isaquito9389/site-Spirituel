@@ -1,4 +1,6 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 /**
  * Database Setup
  * 
@@ -39,7 +41,6 @@ function create_table($pdo, $table_name, $sql) {
         }
     } catch (PDOException $e) {
         $error_message = date('[Y-m-d H:i:s] ') . "Erreur lors de la création de la table $table_name: " . $e->getMessage() . PHP_EOL;
-        error_log($error_message, 3, __DIR__ . '/../logs/db_errors.log');
         $tables_status[$table_name] = false;
         return false;
     }

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+    <!-- Page d'accueil -->
+    <url>
+        <loc>https://maitrespirituel.com/</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Pages principales -->
+    <url>
+        <loc>https://maitrespirituel.com/about</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/contact</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Section Rituels -->
+    <url>
+        <loc>https://maitrespirituel.com/rituals</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Section Blog -->
+    <url>
+        <loc>https://maitrespirituel.com/blog</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Section Boutique/Produits -->
+    <url>
+        <loc>https://maitrespirituel.com/shop</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/products</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Témoignages -->
+    <url>
+        <loc>https://maitrespirituel.com/testimonials</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Pages dynamiques - Rituels individuels -->
+    <!-- Ces URLs seront générées dynamiquement par votre système -->
+    <!-- Exemple de structure pour les rituels -->
+    <url>
+        <loc>https://maitrespirituel.com/ritual/rituel-amour-puissant</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/ritual/rituel-protection-vodoun</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/ritual/rituel-prosperite-financiere</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Pages dynamiques - Articles de blog -->
+    <!-- Ces URLs seront générées dynamiquement par votre système -->
+    <!-- Exemple de structure pour les articles -->
+    <url>
+        <loc>https://maitrespirituel.com/blog/comprendre-la-spiritualite-vodoun</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/blog/les-secrets-des-rituels-damour</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/blog/protection-spirituelle-au-quotidien</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Pages dynamiques - Produits individuels -->
+    <!-- Ces URLs seront générées dynamiquement par votre système -->
+    <!-- Exemple de structure pour les produits -->
+    <url>
+        <loc>https://maitrespirituel.com/product/bougie-rouge-rituel-amour</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/product/miroir-noir-divination</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://maitrespirituel.com/product/encens-purification</loc>
+        <lastmod>2025-01-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+</urlset>

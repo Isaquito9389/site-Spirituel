@@ -1,29 +1,26 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Redirection vers la nouvelle version de la page
 header("Location: consultations_new.php");
 exit;
 
 // Le code ci-dessous ne sera pas exécuté en raison de la redirection
 // Affichage forcé des erreurs PHP pour le debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 // Custom error handler to prevent 500 errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (error_reporting() === 0) {
         return false;
     }
-    
+
     $error_message = "Error [$errno] $errstr - $errfile:$errline";
-    error_log($error_message);
-    
     if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
         echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">
             <h3>Une erreur est survenue</h3>
             <p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>
             <p><a href=\"dashboard.php\" style=\"color: #721c24; text-decoration: underline;\">Retour au tableau de bord</a></p>
         </div>";
-        
+
         // Log detailed error for admin
         if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
             echo "<div style=\"padding: 20px; background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; border-radius: 5px; margin-top: 20px;\">
@@ -31,10 +28,10 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
                 <p>" . htmlspecialchars($error_message) . "</p>
             </div>";
         }
-        
+
         return true;
     }
-    
+
     return false;
 }, E_ALL);
 
@@ -80,12 +77,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "error";
         }
     }
-    
+
     // Mise à jour du statut
     if (isset($_POST['update_status']) && isset($_POST['msg_id']) && isset($_POST['status'])) {
         $id = intval($_POST['msg_id']);
         $status = $_POST['status'] === 'read' ? 'read' : 'unread';
-        
+
         try {
             $stmt = $pdo->prepare("UPDATE messages SET status = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$status, $id]);
@@ -102,14 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     // Filtrage par statut si demandé
     $status_filter = isset($_GET['status']) ? $_GET['status'] : null;
-    
+
     if ($status_filter) {
         $stmt = $pdo->prepare("SELECT * FROM messages WHERE status = ? ORDER BY created_at DESC");
         $stmt->execute([$status_filter]);
     } else {
         $stmt = $pdo->query("SELECT * FROM messages ORDER BY created_at DESC");
     }
-    
+
     $consultations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $message = "Erreur lors de la récupération des messages: " . $e->getMessage();
@@ -124,7 +121,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
         $stmt = $pdo->prepare("SELECT * FROM messages WHERE id = ?");
         $stmt->execute([$id]);
         $consultation_details = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Marquer comme lu si non lu
         if ($consultation_details && $consultation_details['status'] === 'unread') {
             $stmt = $pdo->prepare("UPDATE messages SET status = 'read', updated_at = NOW() WHERE id = ?");
@@ -148,7 +145,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=MedievalSharp&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
-        
+
         :root {
             --primary: #3a0ca3;
             --secondary: #7209b7;
@@ -156,71 +153,71 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             --dark: #1a1a2e;
             --light: #f8f9fa;
         }
-        
+
         body {
             font-family: 'Merriweather', serif;
             background-color: #0f0e17;
             color: #e8e8e8;
         }
-        
+
         .font-cinzel {
             font-family: 'Cinzel Decorative', cursive;
         }
-        
+
         .bg-mystic {
             background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
         }
-        
+
         .btn-magic {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             box-shadow: 0 4px 15px rgba(247, 37, 133, 0.4);
             transition: all 0.3s ease;
         }
-        
+
         .btn-magic:hover {
             transform: translateY(-3px);
             box-shadow: 0 7px 20px rgba(247, 37, 133, 0.6);
         }
-        
+
         .sidebar {
             background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
-        
+
         .nav-link {
             transition: all 0.3s ease;
         }
-        
+
         .nav-link:hover, .nav-link.active {
             background: linear-gradient(90deg, rgba(114, 9, 183, 0.3) 0%, rgba(58, 12, 163, 0) 100%);
             border-left: 4px solid var(--accent);
         }
-        
+
         .card {
             background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(247, 37, 133, 0.2);
         }
-        
+
         /* Styles généraux */
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         /* Style d'en-tête */
         header {
             background-color: #0f0f0f;
             padding: 15px 0;
             text-align: center;
         }
-        
+
         .header-content {
             display: flex;
             justify-content: space-between;
@@ -229,23 +226,23 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             margin: 0 auto;
             padding: 0 20px;
         }
-        
+
         .logo {
             color: #6a0dad;
             text-decoration: none;
             font-size: 1.5em;
             font-weight: bold;
         }
-        
+
         .user-info {
             display: flex;
             align-items: center;
         }
-        
+
         .user-name {
             margin-right: 10px;
         }
-        
+
         /* Style de navigation */
         nav {
             background-color: #171717;
@@ -253,7 +250,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
         }
-        
+
         nav ul {
             display: flex;
             justify-content: center;
@@ -261,28 +258,28 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             padding: 0;
             margin: 0;
         }
-        
+
         nav li {
             margin: 0 15px;
         }
-        
+
         nav a {
             color: #fff;
             text-decoration: none;
             font-weight: bold;
             transition: color 0.3s ease;
         }
-        
+
         nav a:hover {
             color: #6a0dad;
         }
-        
+
         nav a.active {
             color: #6a0dad;
             border-bottom: 2px solid #6a0dad;
             padding-bottom: 5px;
         }
-        
+
         /* Titre de page */
         .page-title {
             margin-bottom: 30px;
@@ -290,7 +287,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             justify-content: space-between;
             align-items: center;
         }
-        
+
         /* Style de bouton */
         .button {
             background-color: #6a0dad;
@@ -305,49 +302,49 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             margin: 5px;
             transition: background-color 0.3s ease;
         }
-        
+
         .button:hover {
             background-color: #5a0b8d;
         }
-        
+
         .button.active {
             background-color: #5a0b8d;
             font-weight: bold;
         }
-        
+
         /* Style de message */
         .message {
             padding: 15px;
             border-radius: 5px;
             margin: 15px 0;
         }
-        
+
         .message-error { background-color: rgba(220, 38, 38, 0.3); }
         .message-success { background-color: rgba(22, 163, 74, 0.3); }
-        
+
         /* Tableau de données */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-        
+
         table th {
             text-align: left;
             padding: 12px 15px;
             background-color: #222;
             border-bottom: 1px solid #444;
         }
-        
+
         table td {
             padding: 10px 15px;
             border-bottom: 1px solid #333;
         }
-        
+
         table tr:hover {
             background-color: #222;
         }
-        
+
         .status-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -355,21 +352,21 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             font-size: 12px;
             font-weight: bold;
         }
-        
+
         .status-unread {
             background-color: #4F46E5;
             color: white;
         }
-        
+
         .status-read {
             background-color: #10B981;
             color: white;
         }
-        
+
         .unread-row {
             background-color: rgba(79, 70, 229, 0.1);
         }
-        
+
         /* Détails de message */
         .message-details {
             background-color: #222;
@@ -377,7 +374,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             border-radius: 8px;
             margin-bottom: 20px;
         }
-        
+
         .message-content {
             background-color: #333;
             padding: 15px;
@@ -385,30 +382,30 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             margin-top: 15px;
             white-space: pre-wrap;
         }
-        
+
         /* Boutons spéciaux */
         .btn-green {
             background-color: #10B981;
         }
-        
+
         .btn-blue {
             background-color: #4F46E5;
         }
-        
+
         .btn-red {
             background-color: #e53e3e;
         }
-        
+
         .btn-red:hover {
             background-color: #c53030;
         }
-        
+
         /* Tabs/filters */
         .tabs {
             display: flex;
             margin-bottom: 20px;
         }
-        
+
         .back-link {
             margin-bottom: 20px;
             display: block;
@@ -425,7 +422,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                 </div>
                 <span class="font-cinzel text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">MYSTICA OCCULTA</span>
             </div>
-            
+
             <div class="flex items-center space-x-4">
                 <span class="text-gray-300">
                     <i class="fas fa-user-circle mr-2"></i> <?php echo htmlspecialchars($admin_username); ?>
@@ -493,17 +490,17 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
             <div class="flex justify-between items-center mb-8">
                 <h1 class="font-cinzel text-3xl font-bold text-white">Gestion des Consultations</h1>
             </div>
-            
+
             <?php if (!empty($message)): ?>
                 <div class="mb-6 p-4 rounded-lg <?php echo $messageType === 'success' ? 'bg-green-900 bg-opacity-50' : 'bg-red-900 bg-opacity-50'; ?>">
                     <?php echo $message; ?>
                 </div>
             <?php endif; ?>
-            
+
             <?php if ($consultation_details): ?>
                 <!-- Affichage détaillé d'un message -->
                 <a href="consultations_new.php" class="button back-link">← Retour à la liste</a>
-                
+
                 <div class="message-details">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2><?php echo htmlspecialchars($consultation_details['subject'] ?: 'Sans sujet'); ?></h2>
@@ -511,30 +508,30 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                             <?php echo $consultation_details['status'] === 'unread' ? 'Non lu' : 'Lu'; ?>
                         </span>
                     </div>
-                    
+
                     <div style="margin-bottom: 15px;">
-                        <strong>De:</strong> <?php echo htmlspecialchars($consultation_details['name']); ?> 
+                        <strong>De:</strong> <?php echo htmlspecialchars($consultation_details['name']); ?>
                         (<a href="mailto:<?php echo htmlspecialchars($consultation_details['email']); ?>"><?php echo htmlspecialchars($consultation_details['email']); ?></a>)
                     </div>
-                    
+
                     <div style="margin-bottom: 15px;">
                         <strong>Téléphone:</strong> <?php echo htmlspecialchars($consultation_details['phone'] ?: 'Non spécifié'); ?>
                     </div>
-                    
+
                     <div style="margin-bottom: 15px;">
                         <strong>Date:</strong> <?php echo date('d/m/Y H:i', strtotime($consultation_details['created_at'])); ?>
                     </div>
-                    
+
                     <?php if (!empty($consultation_details['ritual_id'])): ?>
                     <div style="margin-bottom: 15px;">
                         <strong>Rituel demandé:</strong> ID #<?php echo $consultation_details['ritual_id']; ?>
                     </div>
                     <?php endif; ?>
-                    
+
                     <div class="message-content">
                         <?php echo htmlspecialchars($consultation_details['message']); ?>
                     </div>
-                    
+
                     <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                         <div>
                             <form method="post">
@@ -548,7 +545,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                                 <?php endif; ?>
                             </form>
                         </div>
-                        
+
                         <div>
                             <form method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?');">
                                 <input type="hidden" name="msg_id" value="<?php echo $consultation_details['id']; ?>">
@@ -557,7 +554,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                         </div>
                     </div>
                 </div>
-                
+
             <?php else: ?>
                 <!-- Liste des messages -->
                 <div class="card rounded-xl p-6 border border-purple-900">
@@ -566,7 +563,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                         <a href="consultations_new.php?status=unread" class="button <?php echo isset($_GET['status']) && $_GET['status'] === 'unread' ? 'active' : ''; ?>">Non lus</a>
                         <a href="consultations_new.php?status=read" class="button <?php echo isset($_GET['status']) && $_GET['status'] === 'read' ? 'active' : ''; ?>">Lus</a>
                     </div>
-                    
+
                     <?php if (empty($consultations)): ?>
                         <div style="text-align: center; padding: 50px; background-color: #222; border-radius: 10px;">
                             <h2>Aucun message</h2>
@@ -574,7 +571,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                         </div>
                     <?php else: ?>
                         <p>Affichage de <?php echo count($consultations); ?> message(s) de consultation.</p>
-                        
+
                         <div class="overflow-x-auto">
                             <table class="w-full">
                                 <thead>
@@ -596,7 +593,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                                             <td><?php echo htmlspecialchars($item['name']); ?></td>
                                             <td><?php echo htmlspecialchars($item['email']); ?></td>
                                             <td>
-                                                <?php 
+                                                <?php
                                                     $subject = $item['subject'] ?: 'Sans sujet';
                                                     echo htmlspecialchars(substr($subject, 0, 30)) . (strlen($subject) > 30 ? '...' : '');
                                                 ?>
@@ -608,7 +605,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                                             </td>
                                             <td>
                                                 <a href="consultations_new.php?view=<?php echo $item['id']; ?>" class="button">Voir</a>
-                                                
+
                                                 <form method="post" style="display: inline;">
                                                     <input type="hidden" name="msg_id" value="<?php echo $item['id']; ?>">
                                                     <?php if ($item['status'] === 'read'): ?>
@@ -619,7 +616,7 @@ if (isset($_GET['view']) && !empty($_GET['view'])) {
                                                         <button type="submit" name="update_status" class="button btn-green">Lu</button>
                                                     <?php endif; ?>
                                                 </form>
-                                                
+
                                                 <form method="post" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce message ?');">
                                                     <input type="hidden" name="msg_id" value="<?php echo $item['id']; ?>">
                                                     <button type="submit" name="delete_msg" class="button btn-red">Supprimer</button>

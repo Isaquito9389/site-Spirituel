@@ -1,17 +1,16 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 session_start();
 
-// Check if user is logged in
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header("Location: index.php");
-    exit;
-}
+// Include security functions
+require_once 'includes/security_functions.php';
 
-// Get admin username
-$admin_username = $_SESSION['admin_username'] ?? 'Admin';
+// Set secure headers
+set_secure_headers();
 
-// Handle logout
-if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
+// Check if session is valid
+if (!is_session_valid()) {
     // Clear all session variables
     $_SESSION = array();
     
@@ -21,6 +20,38 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
     // Redirect to login page
     header("Location: index.php");
     exit;
+}
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header("Location: index.php");
+    exit;
+}
+
+// Get admin username and sanitize for output
+$admin_username = sanitize_output($_SESSION['admin_username'] ?? 'Admin');
+
+// Generate CSRF token for logout
+$csrf_token = generate_csrf_token();
+
+// Handle logout with CSRF protection
+if (isset($_GET['logout']) && $_GET['logout'] === 'true' && isset($_GET['csrf_token'])) {
+    // Verify CSRF token
+    if (verify_csrf_token($_GET['csrf_token'])) {
+        // Clear all session variables
+        $_SESSION = array();
+        
+        // Destroy the session
+        session_destroy();
+        
+        // Redirect to login page
+        header("Location: index.php");
+        exit;
+    } else {
+        // Invalid CSRF token, redirect to dashboard
+        header("Location: dashboard.php");
+        exit;
+    }
 }
 ?>
 
@@ -109,7 +140,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
                 <span class="text-gray-300">
                     <i class="fas fa-user-circle mr-2"></i> <?php echo htmlspecialchars($admin_username); ?>
                 </span>
-                <a href="?logout=true" class="text-gray-300 hover:text-pink-500 transition duration-300">
+                <a href="?logout=true&csrf_token=<?php echo $csrf_token; ?>" class="text-gray-300 hover:text-pink-500 transition duration-300">
                     <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
                 </a>
             </div>
@@ -161,6 +192,18 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
                         <a href="settings.php" class="nav-link flex items-center px-6 py-3 text-gray-300 hover:text-white">
                             <i class="fas fa-cog w-6"></i>
                             <span>Paramètres</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="image_library.php" class="nav-link flex items-center px-6 py-3 text-gray-300 hover:text-white" target="_blank">
+                            <i class="fas fa-images w-6"></i>
+                            <span>Bibliothèque Images</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="protected_files_manager.php" class="nav-link flex items-center px-6 py-3 text-gray-300 hover:text-white">
+                            <i class="fas fa-shield-alt w-6"></i>
+                            <span>Fichiers Protégés</span>
                         </a>
                     </li>
                 </ul>
@@ -228,7 +271,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
             <!-- Quick Actions -->
             <div class="mb-8">
                 <h2 class="font-cinzel text-2xl font-bold text-white mb-4">Actions Rapides</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <a href="rituals.php?action=new" class="card rounded-xl p-6 border border-purple-900 hover:border-pink-500">
                         <div class="flex items-center mb-4">
                             <div class="w-10 h-10 rounded-full bg-purple-900 bg-opacity-50 flex items-center justify-center mr-3">
@@ -262,6 +305,18 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'true') {
                         </div>
                         <p class="text-gray-400 text-sm">
                             Ajouter un nouveau produit à la boutique.
+                        </p>
+                    </a>
+                    
+                    <a href="image_library.php" target="_blank" class="card rounded-xl p-6 border border-purple-900 hover:border-pink-500">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 rounded-full bg-purple-900 bg-opacity-50 flex items-center justify-center mr-3">
+                                <i class="fas fa-images text-pink-500"></i>
+                            </div>
+                            <h3 class="font-cinzel text-xl font-bold text-white">Gérer Images</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Accéder à la bibliothèque d'images pour upload et gestion.
                         </p>
                     </a>
                 </div>

@@ -1,70 +1,173 @@
-# Activer le moteur de réécriture
+# -----------------------------------
+# BASE – Redirection & Index
+# -----------------------------------
 RewriteEngine On
 RewriteBase /
 
-# Rediriger vers HTTPS (version InfinityFree-safe)
+# Rediriger HTTP vers HTTPS (InfinityFree-safe)
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Rediriger la racine du site vers index.php (page d'accueil personnalisée)
+# Redirection page d'accueil
 RewriteRule ^$ index.php [L]
 RewriteRule ^index\.html$ index.php [L,R=301]
 
-# Rediriger les requêtes WordPress vers le sous-dossier /wp
-# mais conserver notre page d'accueil personnalisée
-RewriteCond %{REQUEST_URI} !^/wp-admin
-RewriteCond %{REQUEST_URI} !^/wp-includes
-RewriteCond %{REQUEST_URI} !^/wp-content
+# Réécriture WordPress partielle (sous-dossier wp)
 RewriteCond %{REQUEST_URI} ^/wp-(.*)$
 RewriteRule ^wp-(.*)$ wp/wp-$1 [L]
 
-# Support des URLs propres pour les articles de blog
+# Redirection des URLs avec préfixe vers URLs ultra-propres (PRIORITÉ ABSOLUE)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^blog/([^/]+)$ blog-post.php?slug=$1 [L,QSA]
+RewriteRule ^blog/([^/]+)/?$ /$1 [R=301,L]
+RewriteRule ^ritual/([^/]+)/?$ /$1 [R=301,L]
+RewriteRule ^product/([^/]+)/?$ /$1 [R=301,L]
 
-# Support des URLs propres pour les rituels
+# URLs ultra-propres (sans préfixe)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ritual/([^/]+)$ ritual.php?slug=$1 [L,QSA]
+RewriteCond %{REQUEST_URI} !^/(admin|api|includes|logs|uploads|siteSpirituel)(/.*)?$
+RewriteCond %{REQUEST_URI} !^/(index|about|contact|blog|rituals|products|shop|testimonials)\.php$
+RewriteCond %{REQUEST_URI} !^/(android-chrome-|apple-touch-|favicon-|site\.webmanifest)
+RewriteCond %{REQUEST_URI} !^/test_.*\.php$
+RewriteRule ^([^/]+)/?$ check_slug_type.php?slug=$1 [L,QSA]
 
 # Administration
 RewriteRule ^admin/?$ admin/index.php [L]
 RewriteRule ^admin/([a-z_]+)$ admin/$1.php [L]
 
-# Fichiers statiques -> .html fallback si fichier existe
+# Fallback vers fichier HTML s’il existe
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f
 RewriteRule ^(.*)$ $1.html [L]
 
-# Empêcher accès aux fichiers sensibles (version Apache 2.4+)
-<FilesMatch "^\.(htaccess|htpasswd)$">
+# -----------------------------------
+# PROTECTION DES FICHIERS SENSIBLES
+# -----------------------------------
+<FilesMatch "^\.(htaccess|htpasswd|git|env|DS_Store|bashrc)$">
   Require all denied
 </FilesMatch>
 
-<FilesMatch "^(db_connect|auth_functions|setup_database|wp_api_connect)\.php$">
+<FilesMatch "^(db_connect|auth_functions|setup_database|wp_api_connect|security_functions|wp_db_update|wp_rituals_update)\.php$">
   Require all denied
 </FilesMatch>
 
-# Types MIME
-AddType text/css .css
-AddType application/javascript .js
-
-# Compression
-<IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
+<IfModule mod_access_compat.c>
+  <FilesMatch "^(config\.php|bootstrap\.php|db_connect\.php)$">
+    RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^\ ]+)
+    RewriteRule ^(config\.php|bootstrap\.php|db_connect\.php)$ - [F,L]
+  </FilesMatch>
 </IfModule>
 
-# Cache expiration
+<IfModule mod_rewrite.c>
+  RewriteRule ^includes/ - [F,L]
+  RewriteRule ^admin/includes/ - [F,L]
+  RewriteRule ^logs/ - [F,L]
+  RewriteRule ^admin/logs/ - [F,L]
+</IfModule>
+
+Options -Indexes
+
+# -----------------------------------
+# HEADERS DE SÉCURITÉ HTTP
+# -----------------------------------
+<IfModule mod_headers.c>
+  Header set X-XSS-Protection "1; mode=block"
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header unset X-Powered-By
+
+  # ✅ CSP mise à jour pour permettre les iframes YouTube externes
+  Header set Content-Security-Policy "
+    default-src 'self';
+    script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+    font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+    img-src 'self' data: https: https://img.youtube.com;
+    connect-src 'self';
+    frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com;
+    base-uri 'self';
+    object-src 'none';"
+
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>
+
+# -----------------------------------
+# PROTECTION CONTRE INJECTION & XSS
+# -----------------------------------
+<IfModule mod_rewrite.c>
+  RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+  RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+  RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+  RewriteCond %{QUERY_STRING} \.\./|\.\.\\|union|select|insert|drop|delete|update|cast|create|char|convert|alter|declare|order|script|set|md5|benchmark|encode [NC]
+  RewriteRule .* - [F,L]
+</IfModule>
+
+<LimitExcept GET POST HEAD>
+  Require all denied
+</LimitExcept>
+
+# -----------------------------------
+# PERFORMANCE : COMPRESSION & CACHE
+# -----------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript text/javascript application/json
+</IfModule>
+
 <IfModule mod_expires.c>
   ExpiresActive On
+  ExpiresByType image/jpg "access plus 1 year"
   ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
   ExpiresByType image/png "access plus 1 year"
   ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/pdf "access plus 1 month"
   ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType application/x-javascript "access plus 1 month"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresDefault "access plus 2 days"
 </IfModule>
 
-# Page d'erreur personnalisée
-ErrorDocument 500 /error500.php
-php_value display_errors On
+# -----------------------------------
+# TYPES MIME & SEO
+# -----------------------------------
+AddType text/css .css
+AddType application/javascript .js
+AddType application/xml .xml
+
+# Sitemap et robots.txt
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+RewriteRule ^sitemap_index\.xml$ sitemap.php [L]
+
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+sitemap\.php[\s?] [NC]
+RewriteRule ^sitemap\.php$ /sitemap.xml [R=301,L]
+
+# -----------------------------------
+# PHP SECURITY (compatibilité PHP 8.4)
+# -----------------------------------
+<IfModule mod_php.c>
+  php_value display_errors Off
+  php_value session.cookie_httponly 1
+  php_value session.use_only_cookies 1
+  php_value session.cookie_secure 1
+  php_value session.cookie_samesite "Strict"
+  php_value session.gc_maxlifetime 3600
+  php_value max_input_time 60
+  php_value max_execution_time 30
+  php_value memory_limit 128M
+  php_value post_max_size 8M
+  php_value upload_max_filesize 6M
+</IfModule>
+
+# -----------------------------------
+# PAGES D'ERREUR PERSONNALISÉES
+# -----------------------------------
+ErrorDocument 400 /error.php?code=400
+ErrorDocument 401 /error.php?code=401
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 500 /error.php?code=500

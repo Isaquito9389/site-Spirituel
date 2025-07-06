@@ -1,4 +1,6 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 session_start();
 
 // Check if user is logged in

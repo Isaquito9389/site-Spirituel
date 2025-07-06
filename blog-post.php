@@ -1,519 +1,580 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
+
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Gestionnaire d'erreur personnalisé pour éviter les erreurs 500
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (error_reporting() === 0) {
+        return false;
+    }
+    $error_message = "Error [$errno] $errstr - $errfile:$errline";
+    echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">\n<h3>Une erreur est survenue</h3>\n<p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>\n</div>";
+    return true;
+}, E_ALL);
 
 // Inclusion de la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
+require_once 'includes/db_connect.php';
 
-// Vérification du slug de l'article
-$slug = '';
-
-// Récupérer l'URL requête
-$request_uri = $_SERVER['REQUEST_URI'];
-
-// Méthode 1: Vérifier si le slug est dans le chemin (format URL propre /blog/titre-article)
-$pattern = '/\/blog\/([^\/\?]+)/i';
-if (preg_match($pattern, $request_uri, $matches)) {
-    $slug = urldecode($matches[1]);
+// Include backlink functions if they exist
+if (file_exists('admin/includes/backlink_functions.php')) {
+    require_once 'admin/includes/backlink_functions.php';
 }
-// Méthode 2: Vérifier si le slug est passé dans l'URL sous forme de paramètre GET (ancien format)
-elseif (isset($_GET['slug']) && !empty($_GET['slug'])) {
+
+// Vérifier si un slug d'article est fourni
+$slug = '';
+$use_slug = false;
+
+// Méthode 1: Paramètre GET slug - ne rediriger que si on n'est pas déjà dans le contexte d'une URL ultra-propre
+if (isset($_GET['slug']) && !empty($_GET['slug'])) {
     $slug = $_GET['slug'];
     
-    // Si on arrive via le paramètre GET, on redirige vers l'URL propre
-    header('HTTP/1.1 301 Moved Permanently');
-    header('Location: /blog/' . urlencode($slug));
-    exit;
+    // Vérifier si on vient de check_slug_type.php (URL ultra-propre)
+    $is_from_clean_url = (strpos($_SERVER['REQUEST_URI'], 'blog-post.php') === false && 
+                         strpos($_SERVER['REQUEST_URI'], '?slug=') === false);
+    
+    // Rediriger seulement si on accède directement à blog-post.php?slug=xxx
+    if (!$is_from_clean_url && strpos($_SERVER['REQUEST_URI'], 'blog-post.php') !== false) {
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: /" . urlencode($slug));
+        exit;
+    }
+    $use_slug = true;
 }
-// Méthode 3: Format alternatif /blog-post.php/titre-article
+// Méthode 2: Vérifier dans l'URL (formats propres)
 else {
-    $pattern = '/\/blog-post\.php\/([^\/\?]+)/i';
+    $request_uri = $_SERVER['REQUEST_URI'];
+    
+    // Format /blog/nom-de-l-article - rediriger vers l'URL ultra-propre
+    $pattern = '/\/blog\/([^\/\?]+)/i';
     if (preg_match($pattern, $request_uri, $matches)) {
-        $slug = urldecode($matches[1]);
+        $slug = $matches[1];
         
-        // Rediriger vers l'URL propre
-        header('HTTP/1.1 301 Moved Permanently');
-        header('Location: /blog/' . urlencode($slug));
+        // Redirection 301 vers l'URL ultra-propre (priorité)
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: /" . urlencode($slug));
         exit;
     }
 }
 
-// Vérifier si un slug a été trouvé
+// Si aucun slug n'est trouvé, rediriger
 if (empty($slug)) {
-    header('Location: /blog.php');
+    header('Location: blog.php');
     exit;
 }
 
-// Récupération de l'article par slug
+$post = null;
+$related_posts = [];
+
 try {
-    $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE slug = ? AND status = 'published'");
-    $stmt->execute([$slug]);
+    // Récupérer l'article par son slug
+    $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE slug = :slug AND status = 'published'");
+    $stmt->bindParam(':slug', $slug, PDO::PARAM_STR);
+    $stmt->execute();
+    
+    if ($stmt->rowCount() === 0) {
+        // Article non trouvé
+        header('Location: blog.php');
+        exit;
+    }
+    
     $post = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!$post) {
-        // Article non trouvé ou non publié
-        header('Location: /blog.php');
-        exit;
-    }
+    // Incrémenter le nombre de vues
+    $stmt = $pdo->prepare("UPDATE blog_posts SET views = views + 1 WHERE id = :id");
+    $stmt->bindParam(':id', $post['id'], PDO::PARAM_INT);
+    $stmt->execute();
     
-    // Mise à jour du compteur de vues
-    $stmt = $pdo->prepare("UPDATE blog_posts SET views = views + 1 WHERE id = ?");
-    $stmt->execute([$post['id']]);
-    
-    // Récupération des articles similaires (même catégorie)
-    $similar_posts = [];
+    // Récupérer les articles associés (même catégorie)
     if (!empty($post['category'])) {
-        $stmt = $pdo->prepare("SELECT id, title, slug, featured_image FROM blog_posts 
-                              WHERE category = ? AND id != ? AND status = 'published' 
-                              ORDER BY created_at DESC LIMIT 3");
-        $stmt->execute([$post['category'], $post['id']]);
-        $similar_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT * FROM blog_posts WHERE category = :category AND id != :id AND status = 'published' ORDER BY created_at DESC LIMIT 3");
+        $stmt->bindParam(':category', $post['category'], PDO::PARAM_STR);
+        $stmt->bindParam(':id', $post['id'], PDO::PARAM_INT);
+        $stmt->execute();
+        $related_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
-    // Récupération des articles populaires pour la sidebar
-    $popular_posts = [];
-    $stmt = $pdo->query("SELECT id, title, slug, featured_image FROM blog_posts WHERE status = 'published' ORDER BY views DESC LIMIT 3");
-    $popular_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Récupération des catégories pour la sidebar
-    $categories = [];
-    $stmt = $pdo->query("SELECT * FROM blog_categories ORDER BY name");
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération de l'article: " . $e->getMessage());
-    header('Location: /blog.php');
+    // Rediriger en cas d'erreur
+    header('Location: blog.php');
     exit;
 }
 
 // Titre de la page
-$page_title = isset($post['title']) ? $post['title'] . " - Mystica Occulta" : "Article - Mystica Occulta";
+$page_title = htmlspecialchars($post['title']) . " - Blog Mystica Occulta";
+
+// Fonction pour détecter le type de média
+function getMediaType($url) {
+    if (empty($url)) return 'none';
+    
+    $video_extensions = ['mp4', 'webm', 'ogg', 'avi', 'mov'];
+    $image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    
+    $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+    
+    if (in_array($extension, $video_extensions)) return 'video';
+    if (in_array($extension, $image_extensions)) return 'image';
+    
+    // Détection par URL (YouTube, Vimeo, etc.)
+    if (strpos($url, 'youtube.com') !== false || strpos($url, 'youtu.be') !== false) return 'youtube';
+    if (strpos($url, 'vimeo.com') !== false) return 'vimeo';
+    
+    return 'image';
+}
+
+// Fonction pour extraire l'ID YouTube
+function getYouTubeId($url) {
+    preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $url, $matches);
+    return isset($matches[1]) ? $matches[1] : false;
+}
+
+// Fonction pour extraire l'ID Vimeo
+function getVimeoId($url) {
+    preg_match('/vimeo\.com\/(\d+)/', $url, $matches);
+    return isset($matches[1]) ? $matches[1] : false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($page_title); ?></title>
-    <!-- Meta tags pour SEO -->
-    <meta name="description" content="<?php echo isset($post['meta_description']) && !empty($post['meta_description']) ? htmlspecialchars($post['meta_description']) : htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
-    <?php if (isset($post['meta_keywords']) && !empty($post['meta_keywords'])): ?>
-    <meta name="keywords" content="<?php echo htmlspecialchars($post['meta_keywords']); ?>">
-    <?php endif; ?>
-    <meta property="og:title" content="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>">
-    <meta property="og:description" content="<?php echo isset($post['meta_description']) && !empty($post['meta_description']) ? htmlspecialchars($post['meta_description']) : htmlspecialchars(substr(strip_tags($post['excerpt'] ?: $post['content']), 0, 160)); ?>">
-    <?php if (isset($post['featured_image']) && !empty($post['featured_image'])): ?>
-    <meta property="og:image" content="<?php echo htmlspecialchars($post['featured_image']); ?>">
-    <?php endif; ?>
+    <title><?php echo $page_title; ?></title>
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Meta tags pour SEO -->
+    <meta name="description" content="<?php echo htmlspecialchars(substr(strip_tags($post['content'] ?? $post['excerpt'] ?? ''), 0, 160)); ?>">
+    <meta name="keywords" content="<?php echo htmlspecialchars($post['title']); ?>, <?php echo htmlspecialchars($post['category'] ?? ''); ?>, blog ésotérique, spiritualité, magie, rituels, mystica occulta">
+    <meta name="author" content="Mystica Occulta">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.maitrespirituel.com/<?php echo $post['slug']; ?>">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://www.maitrespirituel.com/<?php echo $post['slug']; ?>">
+    <meta property="og:title" content="<?php echo $page_title; ?>">
+    <meta property="og:description" content="<?php echo htmlspecialchars(substr(strip_tags($post['content'] ?? $post['excerpt'] ?? ''), 0, 160)); ?>">
+    <meta property="og:image" content="<?php echo !empty($post['featured_image']) ? htmlspecialchars($post['featured_image']) : 'https://www.maitrespirituel.com/assets/images/og-image-default.jpg'; ?>">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.maitrespirituel.com/<?php echo $post['slug']; ?>">
+    <meta property="twitter:title" content="<?php echo $page_title; ?>">
+    <meta property="twitter:description" content="<?php echo htmlspecialchars(substr(strip_tags($post['content'] ?? $post['excerpt'] ?? ''), 0, 160)); ?>">
+    <meta property="twitter:image" content="<?php echo !empty($post['featured_image']) ? htmlspecialchars($post['featured_image']) : 'https://www.maitrespirituel.com/assets/images/og-image-default.jpg'; ?>">
+    
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
         
+        :root {
+            --primary-color: #7209b7;
+            --secondary-color: #3a0ca3;
+            --accent-color: #f72585;
+            --bg-dark: #0f0e17;
+            --bg-card: #1a1a2e;
+            --bg-card-hover: #16213e;
+            --text-white: #fffffe;
+            --text-gray: #a7a9be;
+            --text-muted: #6c757d;
+            --gradient-primary: linear-gradient(135deg, #7209b7 0%, #3a0ca3 100%);
+            --gradient-card: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 16px 48px rgba(114, 9, 183, 0.2);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Merriweather', serif;
-            background-color: #0f0e17;
-            color: #fffffe;
+            background: var(--bg-dark);
+            color: var(--text-white);
+            line-height: 1.8;
+            overflow-x: hidden;
         }
         
         .font-cinzel {
             font-family: 'Cinzel Decorative', cursive;
         }
         
-        .bg-mystic {
-            background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
-        }
-        
-        .button-magic {
-            background: linear-gradient(45deg, #7209b7, #3a0ca3);
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-weight: 500;
+            color: #333;
+            text-decoration: none;
             transition: all 0.3s ease;
+            z-index: 1000;
         }
         
-        .button-magic:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 7px 15px rgba(58, 12, 163, 0.4);
+        .back-button:hover {
+            background: rgba(255,255,255,1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
         
-        .content-area {
-            line-height: 1.8;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
         }
         
-        .content-area p {
-            margin-bottom: 1.5rem;
+        .article-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-top: 4rem;
         }
         
-        .content-area h2 {
-            font-family: 'Cinzel Decorative', cursive;
-            font-size: 1.75rem;
-            margin-top: 2rem;
+        .breadcrumbs {
+            margin-bottom: 2rem;
+            color: var(--text-gray);
+        }
+        
+        .breadcrumbs a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .breadcrumbs a:hover {
+            color: var(--accent-color);
+        }
+        
+        .category-badge {
+            display: inline-block;
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
             margin-bottom: 1rem;
-            color: #f72585;
         }
         
-        .content-area h3 {
-            font-family: 'Cinzel Decorative', cursive;
-            font-size: 1.5rem;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            color: #7209b7;
+        .article-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, var(--text-white), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        .content-area ul, .content-area ol {
-            margin-left: 1.5rem;
-            margin-bottom: 1.5rem;
+        .article-meta {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            color: var(--text-gray);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
         }
         
-        .content-area li {
-            margin-bottom: 0.5rem;
+        .article-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
-        .content-area img {
-            max-width: 100%;
+        .article-meta i {
+            color: var(--primary-color);
+        }
+        
+        .featured-media {
+            margin-bottom: 3rem;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        
+        .featured-media img,
+        .featured-media video {
+            width: 100%;
             height: auto;
-            border-radius: 0.5rem;
-            margin: 1.5rem 0;
+            display: block;
         }
         
-        .card {
-            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+        .article-content {
+            background: var(--gradient-card);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 3rem;
+        }
+        
+        .article-content h1,
+        .article-content h2,
+        .article-content h3,
+        .article-content h4,
+        .article-content h5,
+        .article-content h6 {
+            color: var(--text-white);
+            margin: 2rem 0 1rem 0;
+        }
+        
+        .article-content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-gray);
+        }
+        
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+            color: var(--text-gray);
+        }
+        
+        .article-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding-left: 2rem;
+            margin: 2rem 0;
+            font-style: italic;
+            color: var(--text-gray);
+        }
+        
+        .article-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: var(--accent-color);
+        }
+        
+        .related-posts {
+            margin-top: 4rem;
+        }
+        
+        .related-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: var(--text-white);
+        }
+        
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .related-card {
+            background: var(--gradient-card);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
             transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
         }
         
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        .related-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .related-image {
+            height: 200px;
+            overflow: hidden;
+            background: var(--gradient-primary);
+        }
+        
+        .related-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .related-card:hover .related-image img {
+            transform: scale(1.1);
+        }
+        
+        .related-content {
+            padding: 1.5rem;
+        }
+        
+        .related-content h3 {
+            color: var(--text-white);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .related-content p {
+            color: var(--text-gray);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .article-content {
+                padding: 2rem;
+            }
+            
+            .article-meta {
+                gap: 1rem;
+            }
         }
     </style>
 </head>
-
-<body class="bg-dark">
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center mb-4 md:mb-0">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center mr-4">
-                        <i class="fas fa-moon text-white text-xl"></i>
-                    </div>
-                    <h1 class="text-3xl font-cinzel font-bold text-white">Mystica Occulta</h1>
+<body>
+    <a href="blog.php" class="back-button">← Retour au blog</a>
+    
+    <div class="container">
+        <article>
+            <header class="article-header">
+                <div class="breadcrumbs">
+                    <a href="index.php">Accueil</a> 
+                    <span> > </span> 
+                    <a href="blog.php">Blog</a>
+                    <?php if (!empty($post['category'])): ?>
+                        <span> > </span> 
+                        <a href="blog.php?category=<?php echo urlencode($post['category']); ?>"><?php echo htmlspecialchars($post['category']); ?></a>
+                    <?php endif; ?>
+                    <span> > </span> 
+                    <span><?php echo htmlspecialchars($post['title']); ?></span>
                 </div>
                 
-                <nav class="flex flex-wrap justify-center">
-                    <a href="/index.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Accueil</a>
-                    <a href="/rituals.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Rituels</a>
-                    <a href="/blog.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300 border-b-2 border-pink-500">Blog</a>
-                    <a href="/about.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">À propos</a>
-                    <a href="/contact.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Contact</a>
-                </nav>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <div class="flex flex-col lg:flex-row">
-            <!-- Article Content -->
-            <div class="lg:w-3/4 lg:pr-8">
-                <!-- Breadcrumbs -->
-                <div class="mb-6 text-gray-400">
-                    <a href="/index.php" class="hover:text-pink-400 transition">Accueil</a> &raquo; 
-                    <a href="/blog.php" class="hover:text-pink-400 transition">Blog</a> 
-                    <?php if (isset($post['category']) && !empty($post['category'])): ?>
-                    &raquo; <a href="/blog.php?category=<?php echo urlencode($post['category']); ?>" class="hover:text-pink-400 transition"><?php echo htmlspecialchars($post['category']); ?></a>
+                <?php if (!empty($post['category'])): ?>
+                    <div class="category-badge"><?php echo htmlspecialchars($post['category']); ?></div>
+                <?php endif; ?>
+                
+                <h1 class="article-title font-cinzel"><?php echo htmlspecialchars($post['title']); ?></h1>
+                
+                <div class="article-meta">
+                    <span>
+                        <i class="far fa-calendar"></i>
+                        <?php echo date('d/m/Y', strtotime($post['created_at'])); ?>
+                    </span>
+                    <?php if (isset($post['views'])): ?>
+                    <span>
+                        <i class="far fa-eye"></i>
+                        <?php echo $post['views']; ?> vues
+                    </span>
                     <?php endif; ?>
-                    &raquo; <span class="text-purple-400"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></span>
-                </div>
-
-                <!-- Article Header -->
-                <div class="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg overflow-hidden shadow-xl mb-8">
-                    <?php if (isset($post['featured_image']) && !empty($post['featured_image'])): ?>
-                    <div class="relative">
-                        <div class="aspect-w-16 aspect-h-9 md:aspect-h-7 lg:aspect-h-5 rounded-t-lg overflow-hidden">
-                            <?php if (substr($post['featured_image'], 0, 4) === 'http'): ?>
-                                <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>" class="w-full h-full object-cover transition-transform duration-1000 hover:scale-105">
-                            <?php else: ?>
-                                <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?>" class="w-full h-full object-cover transition-transform duration-1000 hover:scale-105">
-                            <?php endif; ?>
-                            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
-                        </div>
-                        <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8 lg:p-10">
-                            <h1 class="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-white mb-4 drop-shadow-lg"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></h1>
-                            
-                            <div class="flex flex-wrap items-center space-y-2 md:space-y-0 text-gray-200 text-sm">
-                                <?php if (isset($post['author']) && !empty($post['author'])): ?>
-                                <span class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
-                                    <i class="fas fa-user text-purple-300 mr-2"></i><?php echo htmlspecialchars($post['author']); ?>
-                                </span>
-                                <?php endif; ?>
-                                
-                                <span class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
-                                    <i class="far fa-calendar text-purple-300 mr-2"></i><?php echo date('d/m/Y', strtotime($post['created_at'])); ?>
-                                </span>
-                                
-                                <?php if (isset($post['category']) && !empty($post['category'])): ?>
-                                <a href="blog.php?category=<?php echo urlencode($post['category']); ?>" class="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full hover:bg-purple-800 transition">
-                                    <i class="fas fa-tag text-purple-300 mr-2"></i><?php echo htmlspecialchars($post['category']); ?>
-                                </a>
-                                <?php endif; ?>
-                                
-                                <span class="inline-flex items-center px-3 py-1 mb-2 bg-purple-900/70 backdrop-blur-sm rounded-full">
-                                    <i class="far fa-eye text-purple-300 mr-2"></i><?php echo isset($post['views']) ? $post['views'] : '0'; ?> vues
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <div class="p-8">
-                        <h1 class="text-4xl md:text-5xl font-cinzel font-bold text-white mb-4"><?php echo isset($post['title']) ? htmlspecialchars($post['title']) : ''; ?></h1>
-                        
-                        <div class="flex flex-wrap items-center text-gray-300 text-sm">
-                            <?php if (isset($post['author']) && !empty($post['author'])): ?>
-                            <span class="inline-block mr-6"><i class="fas fa-user mr-2"></i><?php echo htmlspecialchars($post['author']); ?></span>
-                            <?php endif; ?>
-                            
-                            <span class="inline-block mr-6"><i class="far fa-calendar mr-2"></i><?php echo date('d/m/Y', strtotime($post['created_at'])); ?></span>
-                            
-                            <?php if (isset($post['category']) && !empty($post['category'])): ?>
-                            <a href="blog.php?category=<?php echo urlencode($post['category']); ?>" class="inline-block mr-6 hover:text-purple-300 transition">
-                                <i class="fas fa-tag mr-2"></i><?php echo htmlspecialchars($post['category']); ?>
-                            </a>
-                            <?php endif; ?>
-                            
-                            <span class="inline-block"><i class="far fa-eye mr-2"></i><?php echo isset($post['views']) ? $post['views'] : '0'; ?> vues</span>
-                        </div>
-                    </div>
+                    <?php if (!empty($post['author'])): ?>
+                    <span>
+                        <i class="far fa-user"></i>
+                        <?php echo htmlspecialchars($post['author']); ?>
+                    </span>
                     <?php endif; ?>
                 </div>
+            </header>
+            
+            <?php if (!empty($post['featured_image'])): ?>
+            <div class="featured-media">
+                <?php 
+                $media_type = getMediaType($post['featured_image']);
                 
-                <?php if (isset($post['excerpt']) && !empty($post['excerpt'])): ?>
-                <div class="bg-gray-900 bg-opacity-60 rounded-lg p-6 mb-8 text-lg text-gray-300 italic">
-                    <?php echo nl2br(htmlspecialchars($post['excerpt'])); ?>
-                </div>
-                <?php endif; ?>
-
-                <!-- Article Content -->
-                <div class="bg-gray-900 bg-opacity-60 rounded-lg overflow-hidden shadow-xl p-6 md:p-8 mb-12">
-                    <div class="content-area prose prose-lg prose-invert max-w-none text-gray-200">
-                        <?php echo isset($post['content']) ? $post['content'] : ''; ?>
-                    </div>
-                </div>
-                
-                <?php if (isset($post['tags']) && !empty($post['tags'])): ?>
-                <div class="mb-12">
-                    <div class="flex items-center mb-6">
-                        <div class="w-1 h-8 bg-purple-500 rounded mr-3"></div>
-                        <h3 class="text-xl font-bold text-white">Tags</h3>
-                    </div>
-                    <div class="flex flex-wrap">
-                        <?php 
-                        $tags = explode(',', $post['tags']);
-                        foreach ($tags as $tag): 
-                            $tag = trim($tag);
-                            if (!empty($tag)):
-                        ?>
-                        <a href="blog.php?tag=<?php echo urlencode($tag); ?>" class="bg-indigo-900 bg-opacity-60 text-white px-4 py-2 rounded-full text-sm mr-2 mb-2 hover:bg-indigo-800 transition-all transform hover:-translate-y-1 hover:shadow-lg border border-indigo-700">
-                            <i class="fas fa-hashtag text-xs opacity-70 mr-1"></i> <?php echo htmlspecialchars($tag); ?>
-                        </a>
-                        <?php 
-                            endif;
-                        endforeach; 
-                        ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Share Buttons -->
-                <div class="mb-12 bg-gray-900 bg-opacity-60 rounded-lg p-6 md:p-8">
-                    <div class="flex items-center mb-6">
-                        <div class="w-1 h-8 bg-purple-500 rounded mr-3"></div>
-                        <h3 class="text-xl font-bold text-white">Partager cet article</h3>
-                    </div>
-                    <div class="flex flex-wrap gap-3">
-                        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#1877F2] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
-                            <i class="fab fa-facebook-f mr-3"></i> <span class="font-medium">Facebook</span>
-                        </a>
-                        <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode('https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($post['title']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#1DA1F2] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
-                            <i class="fab fa-twitter mr-3"></i> <span class="font-medium">Twitter</span>
-                        </a>
-                        <a href="https://wa.me/?text=<?php echo urlencode($post['title'] . ' - https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" target="_blank" class="flex items-center px-6 py-3 rounded-lg bg-[#25D366] text-white hover:bg-opacity-90 transition-all hover:shadow-lg">
-                            <i class="fab fa-whatsapp mr-3"></i> <span class="font-medium">WhatsApp</span>
-                        </a>
-                        <a href="mailto:?subject=<?php echo urlencode($post['title']); ?>&body=<?php echo urlencode('J\'ai trouvé cet article intéressant et je voulais le partager avec toi: ' . $post['title'] . ' - https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" class="flex items-center px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all hover:shadow-lg">
-                            <i class="fas fa-envelope mr-3"></i> <span class="font-medium">Email</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Similar Articles -->
-                <?php if (!empty($similar_posts)): ?>
-                <div class="mb-12">
-                    <h2 class="text-3xl font-cinzel font-bold text-white mb-6">Articles similaires</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <?php foreach ($similar_posts as $similar): ?>
-                        <a href="/blog/<?php echo urlencode($similar['slug']); ?>" class="card rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300">
-                            <div class="relative h-48">
-                                <?php if (!empty($similar['featured_image'])): ?>
-                                    <?php if (substr($similar['featured_image'], 0, 4) === 'http'): ?>
-                                        <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" alt="<?php echo htmlspecialchars($similar['title']); ?>" class="w-full h-full object-cover">
-                                    <?php else: ?>
-                                        <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" alt="<?php echo htmlspecialchars($similar['title']); ?>" class="w-full h-full object-cover">
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <div class="w-full h-full bg-gradient-to-br from-purple-900 to-indigo-900"></div>
-                                <?php endif; ?>
-                                <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
-                            </div>
-                            <div class="p-6">
-                                <h3 class="text-xl font-bold text-white mb-2"><?php echo htmlspecialchars($similar['title']); ?></h3>
-                            </div>
-                        </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                if ($media_type === 'youtube'): 
+                    $youtube_id = getYouTubeId($post['featured_image']);
+                ?>
+                    <iframe width="100%" height="400" src="https://www.youtube.com/embed/<?php echo $youtube_id; ?>" frameborder="0" allowfullscreen></iframe>
+                <?php elseif ($media_type === 'vimeo'): 
+                    $vimeo_id = getVimeoId($post['featured_image']);
+                ?>
+                    <iframe width="100%" height="400" src="https://player.vimeo.com/video/<?php echo $vimeo_id; ?>" frameborder="0" allowfullscreen></iframe>
+                <?php elseif ($media_type === 'video'): ?>
+                    <video controls width="100%">
+                        <source src="<?php echo htmlspecialchars($post['featured_image']); ?>" type="video/mp4">
+                        Votre navigateur ne supporte pas la lecture de vidéos.
+                    </video>
+                <?php else: ?>
+                    <img src="<?php echo htmlspecialchars($post['featured_image']); ?>" alt="<?php echo htmlspecialchars($post['title']); ?>">
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
             
-            <!-- Sidebar -->
-            <div class="lg:w-1/4 mt-8 lg:mt-0">
-                <!-- Search -->
-                <div class="card p-6 rounded-lg shadow-lg mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Rechercher</h3>
-                    <form action="search.php" method="get">
-                        <div class="flex">
-                            <input type="text" name="query" placeholder="Rechercher..." class="flex-1 py-2 px-4 bg-gray-800 text-white rounded-l-lg focus:outline-none">
-                            <button type="submit" class="bg-purple-700 text-white py-2 px-4 rounded-r-lg hover:bg-purple-600 transition">
-                                <i class="fas fa-search"></i>
-                            </button>
+            <div class="article-content">
+                <?php echo $post['content'] ?? $post['excerpt'] ?? ''; ?>
+                
+                <!-- Backlinks Section -->
+                <?php if (function_exists('get_backlinks')): ?>
+                    <?php $backlinks = get_backlinks('blog', $post['id']); ?>
+                    <?php if (!empty($backlinks)): ?>
+                        <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(114, 9, 183, 0.3);">
+                            <h3 style="font-family: 'Cinzel Decorative', cursive; color: var(--accent-color); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-external-link-alt"></i>
+                                Références et Sources
+                            </h3>
+                            <div style="display: grid; gap: 1rem;">
+                                <?php foreach ($backlinks as $backlink): ?>
+                                    <?php $formatted = format_backlink_display($backlink); ?>
+                                    <div style="background: rgba(26, 26, 46, 0.5); border-radius: 10px; padding: 1.5rem; border: 1px solid rgba(114, 9, 183, 0.3); transition: all 0.3s ease;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="background-color: <?php echo $formatted['color']; ?>20; color: <?php echo $formatted['color']; ?>; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                                                <?php echo $formatted['type_label']; ?>
+                                            </span>
+                                            <span style="color: var(--text-muted); font-size: 0.9rem;"><?php echo $formatted['domain']; ?></span>
+                                        </div>
+                                        <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 600;">
+                                            <a href="<?php echo htmlspecialchars($formatted['url']); ?>" target="_blank" rel="noopener" style="color: var(--text-white); text-decoration: none; transition: color 0.3s ease;">
+                                                <?php echo htmlspecialchars($formatted['title']); ?>
+                                                <i class="fas fa-external-link-alt" style="font-size: 0.8rem; margin-left: 0.5rem;"></i>
+                                            </a>
+                                        </h4>
+                                        <?php if (!empty($formatted['description'])): ?>
+                                            <p style="color: var(--text-gray); font-size: 0.95rem; line-height: 1.5; margin: 0;"><?php echo htmlspecialchars($formatted['description']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
-                    </form>
-                </div>
-                
-                <!-- Categories -->
-                <?php if (!empty($categories)): ?>
-                <div class="card p-6 rounded-lg shadow-lg mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Catégories</h3>
-                    <ul class="space-y-2">
-                        <?php foreach ($categories as $cat): ?>
-                        <li>
-                            <a href="blog.php?category=<?php echo urlencode($cat['name']); ?>" class="flex justify-between items-center text-gray-300 hover:text-purple-400 transition">
-                                <span><?php echo htmlspecialchars($cat['name']); ?></span>
-                                <?php 
-                                try {
-                                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM blog_posts WHERE category = ? AND status = 'published'");
-                                    $stmt->execute([$cat['name']]);
-                                    $count = $stmt->fetchColumn();
-                                    echo "<span class='bg-gray-800 text-gray-400 px-2 py-1 rounded-full text-xs'>$count</span>";
-                                } catch (PDOException $e) {
-                                    echo "<span class='bg-gray-800 text-gray-400 px-2 py-1 rounded-full text-xs'>0</span>";
-                                }
-                                ?>
-                            </a>
-                        </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
+                    <?php endif; ?>
                 <?php endif; ?>
-                
-                <!-- Popular Posts -->
-                <?php if (!empty($popular_posts)): ?>
-                <div class="card p-6 rounded-lg shadow-lg mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Articles Populaires</h3>
-                    <div class="space-y-4">
-                        <?php foreach ($popular_posts as $popular): ?>
-                        <a href="/blog/<?php echo urlencode($popular['slug']); ?>" class="flex items-center group">
-                            <?php if (!empty($popular['featured_image'])): ?>
-                            <div class="w-16 h-16 rounded-lg overflow-hidden mr-4 flex-shrink-0">
-                                <?php if (substr($popular['featured_image'], 0, 4) === 'http'): ?>
-                                    <img src="<?php echo htmlspecialchars($popular['featured_image']); ?>" alt="<?php echo htmlspecialchars($popular['title']); ?>" class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <img src="<?php echo htmlspecialchars($popular['featured_image']); ?>" alt="<?php echo htmlspecialchars($popular['title']); ?>" class="w-full h-full object-cover">
-                                <?php endif; ?>
-                            </div>
-                            <?php endif; ?>
-                            <div>
-                                <h4 class="text-gray-300 group-hover:text-purple-400 transition"><?php echo htmlspecialchars($popular['title']); ?></h4>
-                            </div>
-                        </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Social Media -->
-                <div class="card p-6 rounded-lg shadow-lg mb-8">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Suivez-nous</h3>
-                    <div class="flex justify-center space-x-4">
-                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-900 text-white hover:bg-blue-800 transition"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-pink-700 text-white hover:bg-pink-600 transition"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition"><i class="fab fa-tiktok"></i></a>
-                    </div>
-                </div>
-                
-                <!-- Newsletter -->
-                <div class="card p-6 rounded-lg shadow-lg">
-                    <h3 class="text-xl font-cinzel font-bold text-white mb-4">Newsletter</h3>
-                    <p class="text-gray-400 mb-4">Abonnez-vous pour recevoir nos derniers articles et offres spéciales.</p>
-                    <form action="subscribe.php" method="post">
-                        <input type="email" name="email" placeholder="Votre email" class="w-full py-2 px-4 bg-gray-800 text-white rounded-lg mb-4 focus:outline-none">
-                        <button type="submit" class="w-full button-magic py-2 rounded-lg text-white font-medium">
-                            S'abonner
-                        </button>
-                    </form>
-                </div>
             </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-12">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Mystica Occulta</h3>
-                    <p class="text-gray-400 mb-4">Votre portail vers le monde de l'ésotérisme, de la magie et des rituels ancestraux.</p>
-                </div>
-                
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Navigation</h3>
-                    <ul class="space-y-2">
-                        <li><a href="/index.php" class="text-gray-400 hover:text-purple-400 transition">Accueil</a></li>
-                        <li><a href="/rituals.php" class="text-gray-400 hover:text-purple-400 transition">Rituels</a></li>
-                        <li><a href="/blog.php" class="text-gray-400 hover:text-purple-400 transition">Blog</a></li>
-                        <li><a href="/about.php" class="text-gray-400 hover:text-purple-400 transition">À propos</a></li>
-                        <li><a href="/contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Contact</h3>
-                    <ul class="space-y-2">
-                        <li class="flex items-start">
-                            <i class="fas fa-envelope mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">contact@mysticaocculta.com</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fab fa-whatsapp mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">+33 XX XX XX XX</span>
-                        </li>
-                    </ul>
-                    
-                    <div class="flex space-x-4 mt-6">
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-tiktok"></i></a>
-                    </div>
-                </div>
-            </div>
+        </article>
+        
+        <?php if (!empty($related_posts)): ?>
+        <section class="related-posts">
+            <h2 class="related-title font-cinzel">Articles similaires</h2>
             
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500">
-                <p>&copy; <?php echo date('Y'); ?> Mystica Occulta. Tous droits réservés.</p>
+            <div class="related-grid">
+                <?php foreach ($related_posts as $related): ?>
+                <a href="/<?php echo urlencode($related['slug']); ?>" class="related-card">
+                    <div class="related-image">
+                        <?php if (!empty($related['featured_image'])): ?>
+                            <img src="<?php echo htmlspecialchars($related['featured_image']); ?>" alt="<?php echo htmlspecialchars($related['title']); ?>">
+                        <?php else: ?>
+                            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-scroll" style="font-size: 3rem; opacity: 0.5;"></i>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="related-content">
+                        <h3><?php echo htmlspecialchars($related['title']); ?></h3>
+                        <?php if (!empty($related['excerpt'])): ?>
+                        <p><?php echo htmlspecialchars(substr($related['excerpt'], 0, 100)) . (strlen($related['excerpt']) > 100 ? '...' : ''); ?></p>
+                        <?php endif; ?>
+                    </div>
+                </a>
+                <?php endforeach; ?>
             </div>
-        </div>
-    </footer>
+        </section>
+        <?php endif; ?>
+    </div>
 </body>
 </html>

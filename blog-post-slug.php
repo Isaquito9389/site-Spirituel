@@ -1,11 +1,9 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Inclusion de la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Vérification du slug de l'article
 $slug = '';

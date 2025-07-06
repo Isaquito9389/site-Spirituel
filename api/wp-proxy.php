@@ -1,7 +1,9 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 /**
  * WordPress API Proxy
- * 
+ *
  * Ce fichier sert de proxy entre le frontend et l'API WordPress.
  * Il permet de récupérer le contenu WordPress sans exposer les détails d'authentification.
  */

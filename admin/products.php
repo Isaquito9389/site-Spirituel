@@ -1,24 +1,21 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage forcé des erreurs PHP pour le debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 // Custom error handler to prevent 500 errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (error_reporting() === 0) {
         return false;
     }
-    
+
     $error_message = "Error [$errno] $errstr - $errfile:$errline";
-    error_log($error_message);
-    
     if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
         echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">
             <h3>Une erreur est survenue</h3>
             <p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>
             <p><a href=\"dashboard.php\" style=\"color: #721c24; text-decoration: underline;\">Retour au tableau de bord</a></p>
         </div>";
-        
+
         // Log detailed error for admin
         if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
             echo "<div style=\"padding: 20px; background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; border-radius: 5px; margin-top: 20px;\">
@@ -26,10 +23,10 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
                 <p>" . htmlspecialchars($error_message) . "</p>
             </div>";
         }
-        
+
         return true;
     }
-    
+
     return false;
 }, E_ALL);
 
@@ -60,11 +57,9 @@ require_once 'includes/wp_api_connect.php';
 // pour éviter les problèmes d'inclusion
 if (!function_exists('sync_product_to_wordpress')) {
     function sync_product_to_wordpress($product) {
-        error_log("Utilisation de la fonction sync_product_to_wordpress intégrée");
-        
         // Vérifier si la synchronisation WordPress est activée
         $sync_enabled = false; // Désactivé par défaut pour éviter les erreurs
-        
+
         if (!$sync_enabled) {
             // Si la synchronisation est désactivée, retourner un succès simulé
             return [
@@ -75,12 +70,12 @@ if (!function_exists('sync_product_to_wordpress')) {
                 ]
             ];
         }
-        
+
         // Si la synchronisation est activée, le code ci-dessous serait exécuté
         // mais nous le laissons commenté pour éviter les erreurs
         /*
         global $wp_api_base_url;
-        
+
         // Préparer les données pour WooCommerce
         $wc_product = [
             'name' => $product['title'],
@@ -94,28 +89,28 @@ if (!function_exists('sync_product_to_wordpress')) {
                 ['name' => $product['category']]
             ]
         ];
-        
+
         // Ajouter l'image si disponible
         if (!empty($product['featured_image'])) {
             $wc_product['images'] = [
                 ['src' => $product['featured_image']]
             ];
         }
-        
+
         // Déterminer la méthode HTTP et l'URL
         $method = 'POST';
         $endpoint = 'products';
-        
+
         if (!empty($product['wp_post_id'])) {
             // Mise à jour d'un produit existant
             $endpoint .= '/' . $product['wp_post_id'];
             $method = 'PUT';
         }
-        
+
         // Envoyer la requête à l'API WooCommerce
         return send_to_wordpress($endpoint, $wc_product, $method);
         */
-        
+
         // Retourner un succès simulé
         return [
             'success' => true,
@@ -129,11 +124,9 @@ if (!function_exists('sync_product_to_wordpress')) {
 
 if (!function_exists('delete_wordpress_product')) {
     function delete_wordpress_product($wp_post_id) {
-        error_log("Utilisation de la fonction delete_wordpress_product intégrée");
-        
         // Vérifier si la synchronisation WordPress est activée
         $sync_enabled = false; // Désactivé par défaut pour éviter les erreurs
-        
+
         if (!$sync_enabled) {
             // Si la synchronisation est désactivée, retourner un succès simulé
             return [
@@ -143,14 +136,14 @@ if (!function_exists('delete_wordpress_product')) {
                 ]
             ];
         }
-        
+
         // Si la synchronisation est activée, le code ci-dessous serait exécuté
         // mais nous le laissons commenté pour éviter les erreurs
         /*
         // Utiliser true pour forcer la suppression définitive (au lieu de la corbeille)
         return send_to_wordpress('products/' . $wp_post_id . '?force=true', [], 'DELETE');
         */
-        
+
         // Retourner un succès simulé
         return [
             'success' => true,
@@ -166,16 +159,16 @@ if (!function_exists('sanitize_slug')) {
     function sanitize_slug($string) {
         // Remplacer les caractères accentués par des non-accentués
         $string = transliterator_transliterate('Any-Latin; Latin-ASCII', $string);
-        
+
         // Convertir en minuscules
         $string = strtolower($string);
-        
+
         // Remplacer les espaces et caractères spéciaux par des tirets
         $string = preg_replace('/[^a-z0-9\-]/', '-', $string);
-        
+
         // Remplacer les tirets multiples par un seul tiret
         $string = preg_replace('/-+/', '-', $string);
-        
+
         // Supprimer les tirets au début et à la fin
         return trim($string, '-');
     }
@@ -202,11 +195,11 @@ $product = null;
 if (isset($_SESSION['form_message']) && isset($_SESSION['form_message_type'])) {
     $message = $_SESSION['form_message'];
     $messageType = $_SESSION['form_message_type'];
-    
+
     // Supprimer les messages de la session après les avoir récupérés
     unset($_SESSION['form_message']);
     unset($_SESSION['form_message_type']);
-} 
+}
 // Sinon, vérifier les messages dans l'URL
 elseif (isset($_GET['message']) && isset($_GET['type'])) {
     $message = $_GET['message'];
@@ -231,7 +224,7 @@ try {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
-        
+
         $message = "La table 'products' a été créée avec succès.";
         $messageType = "success";
     } else {
@@ -261,10 +254,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stock = intval($_POST['stock']);
         $status = $_POST['status'];
         $featured_image = isset($_POST['current_image']) ? $_POST['current_image'] : '';
-        
+
         // Générer le slug à partir du titre
         $slug = slugify($title);
-        
+
         // Vérifier l'unicité du slug
         $check = $pdo->prepare("SELECT COUNT(*) FROM products WHERE slug = ?" . ($product_id > 0 ? " AND id != ?" : ""));
         $unique_slug = $slug;
@@ -278,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($check->fetchColumn() == 0) break;
             $unique_slug = $slug . '-' . $i++;
         }
-        
+
         // Validate form data
         if (empty($title)) {
             $message = "Le titre est obligatoire.";
@@ -288,19 +281,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_FILES['featured_image']) && $_FILES['featured_image']['error'] === UPLOAD_ERR_OK) {
                 try {
                     $upload_dir = '../uploads/products/';
-                    
+
                     // Créer le répertoire s'il n'existe pas
                     if (!file_exists($upload_dir)) {
                         if (!mkdir($upload_dir, 0755, true)) {
                             throw new Exception("Impossible de créer le dossier d'upload");
                         }
                     }
-                    
+
                     // Générer un nom de fichier unique
                     $file_extension = pathinfo($_FILES['featured_image']['name'], PATHINFO_EXTENSION);
                     $filename = uniqid() . '.' . $file_extension;
                     $target_file = $upload_dir . $filename;
-                    
+
                     // Déplacer le fichier uploadé
                     if (move_uploaded_file($_FILES['featured_image']['tmp_name'], $target_file)) {
                         $featured_image = 'uploads/products/' . $filename;
@@ -320,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (isset($_POST['current_image']) && !empty($_POST['current_image'])) {
                 $featured_image = $_POST['current_image'];
             }
-            
+
             try {
                 // Préparer les données du produit
                 $product_data = [
@@ -333,19 +326,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'featured_image' => $featured_image,
                     'slug' => $slug
                 ];
-                
+
                 // Si c'est une mise à jour, on inclut l'ID WordPress existant
                 if ($product_id > 0 && !empty($product['wp_post_id'])) {
                     $product_data['wp_post_id'] = $product['wp_post_id'];
                 }
-                
+
                 // Préparer la requête SQL en fonction du type d'opération
                 if ($product_id > 0) {
                     // Mise à jour d'un produit existant
-                    $sql = "UPDATE products SET 
-                            title = :title, 
-                            description = :description, 
-                            price = :price, 
+                    $sql = "UPDATE products SET
+                            title = :title,
+                            description = :description,
+                            price = :price,
                             category = :category,
                             stock = :stock,
                             status = :status,
@@ -353,17 +346,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             slug = :slug,
                             updated_at = NOW()
                             WHERE id = :product_id";
-                    
+
                     $stmt = $pdo->prepare($sql);
                     $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
                 } else {
                     // Insertion d'un nouveau produit
-                    $sql = "INSERT INTO products (title, description, price, category, stock, status, featured_image, slug, created_at, updated_at) 
+                    $sql = "INSERT INTO products (title, description, price, category, stock, status, featured_image, slug, created_at, updated_at)
                             VALUES (:title, :description, :price, :category, :stock, :status, :featured_image, :slug, NOW(), NOW())";
-                    
+
                     $stmt = $pdo->prepare($sql);
                 }
-                
+
                 // Lier les paramètres communs
                 $stmt->bindParam(':title', $title);
                 $stmt->bindParam(':description', $description);
@@ -373,14 +366,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindParam(':status', $status);
                 $stmt->bindParam(':featured_image', $featured_image);
                 $stmt->bindParam(':slug', $slug);
-                
+
                 // Exécuter la requête SQL
                 if ($stmt->execute()) {
                     // Si c'est une insertion, récupérer l'ID du nouveau produit
                     if ($product_id === 0) {
                         $product_id = $pdo->lastInsertId();
                     }
-                    
+
                     // Synchroniser avec WordPress
                     $wp_response = sync_product_to_wordpress([
                         'id' => $product_id,
@@ -393,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'featured_image' => $featured_image,
                         'wp_post_id' => $product['wp_post_id'] ?? null
                     ]);
-                    
+
                     if ($wp_response['success']) {
                         // Mettre à jour l'ID WordPress dans la base de données locale si nécessaire
                         if (isset($wp_response['data']['id']) && empty($product['wp_post_id'])) {
@@ -403,18 +396,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $message = "Produit " . ($product_id > 0 ? "mis à jour" : "créé") . " avec succès et synchronisé avec WordPress.";
                         $messageType = "success";
-                        
+
                         // Rediriger vers la liste après un succès
                         header("Location: products.php?message=" . urlencode($message) . "&type=" . $messageType);
                         exit;
                     } else {
                         $message = "Produit " . ($product_id > 0 ? "mis à jour" : "créé") . " avec succès, mais la synchronisation avec WordPress a échoué : " . ($wp_response['error'] ?? 'Erreur inconnue');
                         $messageType = "warning";
-                        
+
                         // Pour les avertissements, on reste sur le formulaire mais avec le message
                         $_SESSION['form_message'] = $message;
                         $_SESSION['form_message_type'] = $messageType;
-                        
+
                         // Si c'est une création, on redirige vers le formulaire d'édition
                         if ($product_id === 0) {
                             $product_id = $pdo->lastInsertId();
@@ -425,11 +418,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $message = "Erreur lors de la " . ($product_id > 0 ? "mise à jour" : "création") . " du produit.";
                     $messageType = "error";
-                    
+
                     // Pour les erreurs, on reste sur le formulaire avec le message
                     $_SESSION['form_message'] = $message;
                     $_SESSION['form_message_type'] = $messageType;
-                    
+
                     // Si c'est une création, on recharge la page pour afficher l'erreur
                     if ($product_id === 0) {
                         header("Location: products.php?action=new");
@@ -444,43 +437,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['delete_product'])) {
         // Delete product
         $product_id = intval($_POST['product_id']);
-        
+
         try {
             // Récupérer le produit pour obtenir l'ID WordPress
             $stmt = $pdo->prepare("SELECT wp_post_id FROM products WHERE id = ?");
             $stmt->execute([$product_id]);
             $product = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             // Supprimer de WordPress si l'ID existe
             if (!empty($product['wp_post_id'])) {
                 $wp_response = delete_wordpress_product($product['wp_post_id']);
-                
+
                 if (!$wp_response['success']) {
-                    error_log("Erreur lors de la suppression du produit WordPress: " . ($wp_response['error'] ?? 'Erreur inconnue'));
                     // On continue quand même la suppression locale
                 }
             }
-            
+
             // Supprimer de la base de données locale
             $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
             $result = $stmt->execute([$product_id]);
-            
+
             if ($result) {
                 $message = "Produit supprimé avec succès".(!empty($product['wp_post_id']) && !$wp_response['success'] ? " (mais erreur lors de la synchronisation avec WordPress)" : "").".";
                 $messageType = !empty($product['wp_post_id']) && !$wp_response['success'] ? "warning" : "success";
-                
+
                 // Stocker le message dans la session pour la redirection
                 $_SESSION['form_message'] = $message;
                 $_SESSION['form_message_type'] = $messageType;
             } else {
                 $message = "Erreur lors de la suppression du produit.";
                 $messageType = "error";
-                
+
                 // Stocker le message d'erreur dans la session
                 $_SESSION['form_message'] = $message;
                 $_SESSION['form_message_type'] = $messageType;
             }
-            
+
             // Rediriger vers la liste des produits
             header("Location: products.php");
             exit;
@@ -542,7 +534,7 @@ try {
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=MedievalSharp&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
-        
+
         :root {
             --primary: #3a0ca3;
             --secondary: #7209b7;
@@ -550,57 +542,57 @@ try {
             --dark: #1a1a2e;
             --light: #f8f9fa;
         }
-        
+
         body {
             font-family: 'Merriweather', serif;
             background-color: #0f0e17;
             color: #e8e8e8;
         }
-        
+
         .font-cinzel {
             font-family: 'Cinzel Decorative', cursive;
         }
-        
+
         .bg-mystic {
             background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
         }
-        
+
         .btn-magic {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             box-shadow: 0 4px 15px rgba(247, 37, 133, 0.4);
             transition: all 0.3s ease;
         }
-        
+
         .btn-magic:hover {
             transform: translateY(-3px);
             box-shadow: 0 7px 20px rgba(247, 37, 133, 0.6);
         }
-        
+
         .sidebar {
             background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
-        
+
         .nav-link {
             transition: all 0.3s ease;
         }
-        
+
         .nav-link:hover, .nav-link.active {
             background: linear-gradient(90deg, rgba(114, 9, 183, 0.3) 0%, rgba(58, 12, 163, 0) 100%);
             border-left: 4px solid var(--accent);
         }
-        
+
         .card {
             background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(247, 37, 133, 0.2);
         }
-        
+
         /* Quill editor custom styles */
         .ql-toolbar.ql-snow {
             background-color: #1a1a2e;
@@ -608,7 +600,7 @@ try {
             border-top-left-radius: 0.5rem;
             border-top-right-radius: 0.5rem;
         }
-        
+
         .ql-container.ql-snow {
             border-color: #3a0ca3;
             background-color: #0f0e17;
@@ -617,29 +609,29 @@ try {
             border-bottom-left-radius: 0.5rem;
             border-bottom-right-radius: 0.5rem;
         }
-        
+
         .ql-editor {
             min-height: 200px;
             color: #ffffff;
             font-size: 16px;
         }
-        
+
         .ql-editor p, .ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor li {
             color: #ffffff;
         }
-        
+
         .ql-snow .ql-stroke {
             stroke: #e8e8e8;
         }
-        
+
         .ql-snow .ql-fill, .ql-snow .ql-stroke.ql-fill {
             fill: #e8e8e8;
         }
-        
+
         .ql-snow .ql-picker {
             color: #e8e8e8;
         }
-        
+
         .ql-snow .ql-picker-options {
             background-color: #1a1a2e;
         }
@@ -655,7 +647,7 @@ try {
                 </div>
                 <span class="font-cinzel text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">MYSTICA OCCULTA</span>
             </div>
-            
+
             <div class="flex items-center space-x-4">
                 <a href="dashboard.php" class="text-gray-300 hover:text-pink-500 transition duration-300">
                     <i class="fas fa-tachometer-alt mr-2"></i> Tableau de Bord
@@ -736,7 +728,7 @@ try {
                         Gestion des Produits
                     <?php endif; ?>
                 </h1>
-                
+
                 <?php if ($action === 'list'): ?>
                     <a href="?action=new" class="btn-magic px-4 py-2 rounded-full text-white font-medium inline-flex items-center">
                         <i class="fas fa-plus mr-2"></i> Nouveau Produit
@@ -747,13 +739,13 @@ try {
                     </a>
                 <?php endif; ?>
             </div>
-            
+
             <?php if (!empty($message)): ?>
                 <div class="mb-6 p-4 rounded-lg <?php echo $messageType === 'success' ? 'bg-green-900 bg-opacity-50' : 'bg-red-900 bg-opacity-50'; ?>">
                     <?php echo $message; ?>
                 </div>
             <?php endif; ?>
-            
+
             <?php if ($action === 'list'): ?>
                 <!-- Products List -->
                 <div class="card rounded-xl p-6 border border-purple-900">
@@ -804,7 +796,7 @@ try {
                         </div>
                     <?php endif; ?>
                 </div>
-                
+
                 <!-- Delete Confirmation Modal -->
                 <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
                     <div class="bg-gradient-to-br from-purple-900 to-dark rounded-xl shadow-2xl overflow-hidden border border-purple-800 p-8 max-w-md w-full">
@@ -832,16 +824,16 @@ try {
                             <input type="hidden" name="current_image" value="<?php echo $product['featured_image']; ?>">
                         <?php endif; ?>
                     <?php endif; ?>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div class="md:col-span-2">
-                        
+
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             <div class="md:col-span-2">
                                 <label for="title" class="block text-gray-300 mb-2">Titre du produit *</label>
                                 <input type="text" id="title" name="title" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez le titre du produit" value="<?php echo $product ? htmlspecialchars($product['title']) : ''; ?>">
                             </div>
-                            
+
                             <div>
                                 <label for="category" class="block text-gray-300 mb-2">Catégorie</label>
                                 <input type="text" list="category-list" id="category" name="category" class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 text-white" value="<?php echo $product ? htmlspecialchars($product['category']) : ''; ?>" placeholder="Choisissez ou entrez une catégorie">

@@ -1,11 +1,9 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Inclusion de la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Pagination
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -67,8 +65,7 @@ try {
     $stmt->execute();
     $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération des articles: " . $e->getMessage());
-}
+    }
 
 // Calcul du nombre total de pages
 $total_pages = ceil($total_posts / $per_page);
@@ -79,8 +76,7 @@ try {
     $stmt = $pdo->query("SELECT * FROM blog_categories ORDER BY name");
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération des catégories: " . $e->getMessage());
-}
+    }
 
 // Récupération des articles populaires pour la sidebar
 $popular_posts = [];
@@ -88,8 +84,7 @@ try {
     $stmt = $pdo->query("SELECT id, title, slug, featured_image FROM blog_posts WHERE status = 'published' ORDER BY views DESC LIMIT 3");
     $popular_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération des articles populaires: " . $e->getMessage());
-}
+    }
 
 // Titre de la page
 $page_title = "Blog - Mystica Occulta";

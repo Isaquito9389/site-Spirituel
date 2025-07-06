@@ -1,4 +1,6 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 /**
  * WordPress Database Update for Rituals
  * 

@@ -1,8 +1,7 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 // Gestionnaire d'erreur personnalisé pour éviter les erreurs 500
 set_error_handler(function(
     $errno, $errstr, $errfile, $errline
@@ -11,57 +10,41 @@ set_error_handler(function(
         return false;
     }
     $error_message = "Error [$errno] $errstr - $errfile:$errline";
-    error_log($error_message);
-    echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">\n<h3>Une erreur est survenue</h3>\n<p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>\n</div>";
+    echo "<div class=\"error-message\">\n<h3>Une erreur est survenue</h3>\n<p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>\n</div>";
     return true;
 }, E_ALL);
 
 // Inclusion de la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
+require_once 'includes/db_connect.php';
 
-// Gestion des anciennes URL avec ID (redirection vers le format avec slug)
-if (isset($_GET['id']) && !empty($_GET['id'])) {
+// Include backlink functions if they exist
+if (file_exists('admin/includes/backlink_functions.php')) {
+    require_once 'admin/includes/backlink_functions.php';
+}
+
+// Récupération du slug du rituel
+$slug = '';
+
+// Méthode 1: Paramètre GET slug
+if (isset($_GET['slug']) && !empty($_GET['slug'])) {
+    $slug = $_GET['slug'];
+}
+// Méthode 2: Paramètre GET id (pour compatibilité)
+elseif (isset($_GET['id']) && !empty($_GET['id'])) {
     $id = intval($_GET['id']);
     try {
         $stmt = $pdo->prepare("SELECT slug FROM rituals WHERE id = ? AND status = 'published'");
         $stmt->execute([$id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($result && !empty($result['slug'])) {
-            // Redirection 301 (permanente) vers la nouvelle URL avec slug
-            header("HTTP/1.1 301 Moved Permanently");
-            header("Location: ritual.php?slug=" . urlencode($result['slug']));
-            exit;
+            $slug = $result['slug'];
         }
     } catch (PDOException $e) {
-        error_log("Erreur lors de la redirection ID vers slug: " . $e->getMessage());
+        // Erreur silencieuse
     }
 }
 
-// Vérification du slug du rituel
-$slug = '';
-
-// Méthode 1: Vérifier si le slug est passé dans l'URL sous forme de paramètre GET (ancien format)
-if (isset($_GET['slug']) && !empty($_GET['slug'])) {
-    $slug = $_GET['slug'];
-}
-// Méthode 2: Vérifier si le slug est dans le chemin (nouveau format /ritual/titre-article)
-else {
-    // Obtenir le chemin de l'URL requête
-    $request_uri = $_SERVER['REQUEST_URI'];
-    // Extraire le slug du chemin
-    $pattern = '/\/ritual\/([^\/\?]+)/i';
-    if (preg_match($pattern, $request_uri, $matches)) {
-        $slug = $matches[1];
-    } else {
-        // Format alternatif /ritual.php/titre-rituel
-        $pattern = '/\/ritual\.php\/([^\/\?]+)/i';
-        if (preg_match($pattern, $request_uri, $matches)) {
-            $slug = $matches[1];
-        }
-    }
-}
-
-// Vérifier si un slug a été trouvé
+// Si aucun slug trouvé, rediriger vers la liste des rituels
 if (empty($slug)) {
     header('Location: rituals.php');
     exit;
@@ -75,10 +58,6 @@ if (!$ritual) {
     header('Location: rituals.php');
     exit;
 }
-
-// (Vérification de l'id supprimée, on utilise maintenant le slug)
-
-// Le rituel a déjà été récupéré par slug au début du fichier
 
 // Récupération des rituels similaires (même catégorie)
 $similar_rituals = [];
@@ -112,15 +91,37 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
     <?php endif; ?>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
         
+        :root {
+            --primary-purple: #7209b7;
+            --secondary-purple: #3a0ca3;
+            --accent-pink: #f72585;
+            --dark-bg: #0f0e17;
+            --card-bg: #1a1a2e;
+            --text-light: #fffffe;
+            --text-gray: #d8d8d8;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(114, 9, 183, 0.3);
+            --shadow-glow: rgba(114, 9, 183, 0.4);
+            --gradient-main: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+            --gradient-accent: linear-gradient(135deg, var(--accent-pink), var(--primary-purple));
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Merriweather', serif;
-            background-color: #0f0e17;
-            color: #fffffe;
+            background: var(--dark-bg);
+            color: var(--text-light);
+            line-height: 1.6;
+            overflow-x: hidden;
         }
         
         /* Animation de particules en arrière-plan */
@@ -154,9 +155,260 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             font-family: 'Cinzel Decorative', cursive;
         }
         
-        /* Dégradé de texte pour les titres */
-        .text-gradient {
-            background: linear-gradient(to right, #f72585, #7209b7, #3a0ca3);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .container-wide {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        header {
+            background: var(--gradient-main);
+            padding: 2rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: rotate 20s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(247, 37, 133, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(247, 37, 133, 0.8); }
+        }
+        
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--text-light), var(--accent-pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .nav a {
+            color: var(--text-light);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .nav a:hover::before {
+            left: 100%;
+        }
+        
+        /* Error Message */
+        .error-message {
+            padding: 20px;
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        /* Main Content */
+        main {
+            padding: 3rem 0;
+        }
+        
+        /* Breadcrumbs */
+        .breadcrumbs {
+            margin-bottom: 2rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .breadcrumbs a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .breadcrumbs a:hover {
+            color: var(--accent-pink);
+        }
+        
+        .breadcrumbs .current {
+            color: var(--primary-purple);
+        }
+        
+        /* Ritual Header */
+        .ritual-header {
+            background: var(--gradient-main);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ritual-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: floating 6s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        
+        .ritual-header-content {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        @media (min-width: 768px) {
+            .ritual-header-content {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+        
+        .ritual-image {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .ritual-image img {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            object-fit: contain;
+            transition: transform 0.5s ease;
+            border-radius: 15px;
+        }
+        
+        .ritual-image:hover img {
+            transform: scale(1.05);
+        }
+        
+        .ritual-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: skewX(-25deg);
+            animation: image-shine 4s ease-in-out infinite;
+        }
+        
+        @keyframes image-shine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        .ritual-video {
+            border-radius: 15px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            margin-bottom: 2rem;
+        }
+        
+        .ritual-video iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .ritual-info h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-accent);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
@@ -170,90 +422,112 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             100% { background-position: 0% 50%; }
         }
         
-        .bg-mystic {
-            background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
-            position: relative;
-            overflow: hidden;
+        .ritual-excerpt {
+            font-size: 1.2rem;
+            color: var(--text-gray);
+            margin-bottom: 2rem;
+            line-height: 1.8;
         }
         
-        /* Cercles lumineux en arrière-plan */
-        .bg-mystic::before {
-            content: '';
-            position: absolute;
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(114, 9, 183, 0.4) 0%, rgba(58, 12, 163, 0) 70%);
-            top: -50px;
-            right: -50px;
-            animation: glow-pulse 8s ease-in-out infinite alternate;
+        .ritual-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
         
-        .bg-mystic::after {
-            content: '';
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(247, 37, 133, 0.3) 0%, rgba(58, 12, 163, 0) 70%);
-            bottom: -30px;
-            left: 10%;
-            animation: glow-pulse 6s ease-in-out infinite alternate-reverse;
+        .meta-item {
+            background: rgba(26, 26, 46, 0.7);
+            border-radius: 25px;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
         }
         
-        @keyframes glow-pulse {
-            0% { opacity: 0.3; transform: scale(1); }
-            100% { opacity: 0.7; transform: scale(1.3); }
+        .meta-item:hover {
+            background: rgba(114, 9, 183, 0.2);
+            border-color: var(--primary-purple);
+            transform: translateY(-2px);
         }
         
-        .button-magic {
-            background: linear-gradient(45deg, #7209b7, #3a0ca3);
+        .meta-item i {
+            color: var(--primary-purple);
+        }
+        
+        .meta-value {
+            color: var(--accent-pink);
+            font-weight: 600;
+        }
+        
+        .ritual-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            min-width: 200px;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
         }
         
-        /* Effet de brillance sur les boutons */
-        .button-magic::before {
+        .btn-primary {
+            background: var(--gradient-accent);
+            color: var(--text-light);
+            box-shadow: 0 4px 15px var(--shadow-glow);
+            animation: pulse-button 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-button {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            color: var(--text-light);
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+        }
+        
+        .btn::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                to right,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.3) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
-            transform: rotate(30deg);
-            animation: shine-effect 6s ease-in-out infinite;
-            opacity: 0;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
         }
         
-        .button-magic:hover {
+        .btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 7px 20px rgba(114, 9, 183, 0.6);
+            box-shadow: 0 8px 25px var(--shadow-glow);
         }
         
-        .button-magic:hover::before {
-            opacity: 1;
+        .btn:hover::before {
+            left: 100%;
         }
         
-        @keyframes shine-effect {
-            0% { left: -100%; opacity: 0; }
-            10% { left: -100%; opacity: 0.5; }
-            20% { left: 100%; opacity: 0.5; }
-            30% { left: 100%; opacity: 0; }
-            100% { left: 100%; opacity: 0; }
-        }
-        
-        /* Séparateur stylisé */
+        /* Divider */
         .mystic-divider {
             height: 3px;
-            background: linear-gradient(to right, rgba(114, 9, 183, 0), rgba(114, 9, 183, 0.7), rgba(114, 9, 183, 0));
-            margin: 2rem 0;
+            background: linear-gradient(to right, transparent, var(--primary-purple), transparent);
+            margin: 3rem 0;
             position: relative;
         }
         
@@ -263,26 +537,42 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #0f0e17;
-            padding: 0 15px;
-            color: #7209b7;
-            font-size: 1.2rem;
+            background: var(--dark-bg);
+            padding: 0 1rem;
+            color: var(--primary-purple);
+            font-size: 1.5rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Content Area */
+        .content-container {
+            background: linear-gradient(145deg, var(--card-bg), rgba(58, 12, 163, 0.1));
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
         }
         
         .content-area {
-            line-height: 1.8;
+            font-size: 1.125rem;
+            line-height: 2;
         }
         
         .content-area p {
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
         
         .content-area h2 {
             font-family: 'Cinzel Decorative', cursive;
-            font-size: 1.75rem;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            color: #f72585;
+            font-size: 2rem;
+            margin: 2.5rem 0 1.5rem 0;
+            color: var(--accent-pink);
             position: relative;
             padding-bottom: 0.5rem;
         }
@@ -294,20 +584,20 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             left: 0;
             width: 60px;
             height: 3px;
-            background: linear-gradient(to right, #f72585, rgba(247, 37, 133, 0));
+            background: var(--gradient-accent);
+            border-radius: 2px;
         }
         
         .content-area h3 {
             font-family: 'Cinzel Decorative', cursive;
             font-size: 1.5rem;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            color: #7209b7;
+            margin: 2rem 0 1rem 0;
+            color: var(--primary-purple);
         }
         
         .content-area ul, .content-area ol {
-            margin-left: 1.5rem;
-            margin-bottom: 1.5rem;
+            margin: 1.5rem 0;
+            padding-left: 2rem;
         }
         
         .content-area li {
@@ -317,121 +607,105 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
         
         .content-area ul li::before {
             content: '✦';
-            color: #7209b7;
+            color: var(--primary-purple);
             position: absolute;
-            left: -1.2rem;
+            left: -1.5rem;
         }
         
-        /* Amélioration du style des images avec effet de brillance */
-        .content-area img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 0.5rem;
-            margin: 1.5rem auto;
-            display: block;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(122, 9, 183, 0.3);
-            transition: transform 0.5s ease, box-shadow 0.5s ease;
-            position: relative;
-            z-index: 1;
+        /* Backlinks Section */
+        .backlinks-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
         }
         
-        .content-area img:hover {
-            transform: scale(1.03) translateY(-5px);
-            box-shadow: 0 15px 30px rgba(122, 9, 183, 0.5);
-            filter: brightness(1.05);
+        .backlinks-section h3 {
+            font-family: 'Cinzel Decorative', cursive;
+            color: var(--accent-pink);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
-        /* Effet de brillance sur les images */
-        .ritual-image {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .ritual-image::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(
-                to right,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.2) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
-            transform: skewX(-25deg);
-            animation: image-shine 6s ease-in-out infinite;
-        }
-        
-        @keyframes image-shine {
-            0% { left: -100%; }
-            20% { left: 100%; }
-            100% { left: 100%; }
-        }
-        
-        /* Style pour les vidéos avec ratio d'aspect amélioré */
-        .content-area iframe,
-        .content-area .ql-video {
-            width: 100%;
-            max-width: 700px;
-            aspect-ratio: 16/9;
-            height: auto;
-            margin: 2rem auto;
-            display: block;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(122, 9, 183, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .content-area iframe:hover,
-        .content-area .ql-video:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 30px rgba(122, 9, 183, 0.5);
-        }
-        
-        /* Conteneur pour les médias avec légende et bordure animée */
-        .media-container {
-            margin: 2rem 0;
-            background: rgba(26, 26, 46, 0.7);
-            border-radius: 0.75rem;
+        .backlink-item {
+            background: rgba(26, 26, 46, 0.5);
+            border-radius: 10px;
             padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(122, 9, 183, 0.2);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .backlink-item:hover {
+            background: rgba(114, 9, 183, 0.1);
+            border-color: var(--primary-purple);
+            transform: translateY(-2px);
+        }
+        
+        .backlink-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .backlink-type {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .backlink-domain {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        .backlink-title {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .backlink-title a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .backlink-title a:hover {
+            color: var(--accent-pink);
+        }
+        
+        .backlink-description {
+            color: var(--text-gray);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .media-container {
+            margin: 2.5rem 0;
+            background: rgba(26, 26, 46, 0.7);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
         }
         
-        .media-container:hover {
-            box-shadow: 0 8px 30px rgba(122, 9, 183, 0.4);
-            border-color: rgba(122, 9, 183, 0.5);
-        }
-        
-        /* Bordure animée pour le conteneur de médias */
         .media-container::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 0.75rem;
-            padding: 2px;
-            background: linear-gradient(
-                45deg,
-                rgba(114, 9, 183, 0.3),
-                rgba(58, 12, 163, 0.3),
-                rgba(247, 37, 133, 0.3),
-                rgba(114, 9, 183, 0.3)
-            );
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            background-size: 300% 300%;
-            animation: border-animation 8s linear infinite;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: var(--gradient-accent);
+            border-radius: 15px;
+            z-index: -1;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -440,32 +714,23 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             opacity: 1;
         }
         
-        @keyframes border-animation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        .media-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(114, 9, 183, 0.3);
         }
         
-        .media-container img,
-        .media-container iframe,
-        .media-container .ql-video {
-            margin: 0 auto 1rem auto;
-            transition: transform 0.5s ease;
-        }
-        
-        .media-container:hover img,
-        .media-container:hover iframe,
-        .media-container:hover .ql-video {
-            transform: scale(1.01);
+        .media-container img, .media-container iframe {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 1rem;
         }
         
         .media-caption {
             text-align: center;
             font-style: italic;
-            color: #d8d8d8;
-            font-size: 0.95rem;
+            color: var(--text-gray);
             position: relative;
-            padding-top: 0.5rem;
+            padding-top: 1rem;
         }
         
         .media-caption::before {
@@ -475,393 +740,702 @@ $page_title = $ritual['title'] . " - Mystica Occulta";
             left: 30%;
             right: 30%;
             height: 1px;
-            background: linear-gradient(to right, rgba(114, 9, 183, 0), rgba(114, 9, 183, 0.5), rgba(114, 9, 183, 0));
+            background: var(--gradient-accent);
+        }
+
+        /* Styles pour les médias intégrés dans le contenu */
+        .content-area img {
+            margin: 2.5rem 0;
+            background: rgba(26, 26, 46, 0.7);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            width: 100%;
+            height: auto;
+        }
+
+        .content-area img:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(114, 9, 183, 0.3);
+        }
+
+        .content-area iframe {
+            margin: 2.5rem 0;
+            background: rgba(26, 26, 46, 0.7);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            width: 100%;
+            min-height: 400px;
+            aspect-ratio: 16/9;
+        }
+
+        .content-area iframe:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(114, 9, 183, 0.3);
+        }
+
+        /* Style spécial pour les vidéos YouTube intégrées */
+        .content-area iframe[src*="youtube.com"] {
+            border-radius: 15px;
+            overflow: hidden;
         }
         
-        /* Cartes avec effet 3D léger */
-        .card {
-            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-            transition: all 0.5s ease;
-            transform-style: preserve-3d;
-            perspective: 1000px;
+        /* Similar Rituals */
+        .similar-rituals {
+            margin-bottom: 4rem;
         }
         
-        .card:hover {
-            transform: translateY(-8px) rotateX(5deg);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), 
-                        0 5px 15px rgba(114, 9, 183, 0.3);
-        }
-        
-        /* Effet de pulsation pour les éléments importants */
-        .pulse-effect {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        /* Optimisations pour mobile */
-        @media (max-width: 640px) {
-            .media-container {
-                padding: 1rem;
-            }
-            
-            .content-area h2 {
-                font-size: 1.5rem;
-            }
-            
-            .content-area h3 {
-                font-size: 1.3rem;
-            }
-            
-            .button-magic, 
-            .rounded-full {
-                width: 100%;
-                justify-content: center;
-                margin-right: 0;
-                margin-bottom: 1rem;
-            }
-        }
-        
-        /* Lazy loading pour les images */
-        .lazy-load {
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-        
-        .lazy-load.loaded {
-            opacity: 1;
-        }
-        
-        /* Étapes numérotées pour les rituels */
-        .ritual-step {
-            position: relative;
-            padding-left: 3rem;
+        .section-title {
+            display: flex;
+            align-items: center;
             margin-bottom: 2rem;
-            counter-increment: ritual-steps;
+            gap: 1rem;
         }
         
-        .ritual-step::before {
-            content: counter(ritual-steps);
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 40px;
+            background: var(--gradient-accent);
+            border-radius: 2px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: var(--gradient-accent);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .rituals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .ritual-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.5s ease;
+            position: relative;
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .ritual-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 20px 40px rgba(114, 9, 183, 0.3);
+        }
+        
+        .ritual-card-image {
+            position: relative;
+            aspect-ratio: 16/9;
+            overflow: hidden;
+        }
+        
+        .ritual-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .ritual-card:hover .ritual-card-image img {
+            transform: scale(1.1);
+        }
+        
+        .ritual-card-price {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 2.5rem;
-            height: 2.5rem;
-            background: linear-gradient(135deg, #7209b7, #3a0ca3);
+            top: 1rem;
+            right: 1rem;
+            background: var(--gradient-accent);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .ritual-card-content {
+            padding: 1.5rem;
+        }
+        
+        .ritual-card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+        
+        .ritual-card:hover .ritual-card-title {
+            color: var(--accent-pink);
+        }
+        
+        .ritual-card-link {
+            color: var(--primary-purple);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .ritual-card:hover .ritual-card-link {
+            gap: 1rem;
+        }
+        
+        /* Call to Action */
+        .cta-section {
+            position: relative;
+            background: var(--gradient-main);
+            border-radius: 20px;
+            padding: 4rem 2rem;
+            text-align: center;
+            margin-bottom: 4rem;
+            overflow: hidden;
+        }
+        
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: rotate 30s linear infinite;
+        }
+        
+        .cta-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .cta-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            margin: 0 auto 2rem auto;
+            font-size: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .cta-title {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-light), var(--accent-pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .cta-text {
+            font-size: 1.2rem;
+            color: var(--text-gray);
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--card-bg);
+            padding: 3rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-section h3 {
+            font-family: 'Cinzel Decorative', cursive;
+            color: var(--accent-pink);
+            margin-bottom: 1rem;
+        }
+        
+        .footer-section p, .footer-section a {
+            color: var(--text-gray);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-section a:hover {
+            color: var(--accent-pink);
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                text-align: center;
+            }
+            
+            .nav {
+                justify-content: center;
+            }
+            
+            .ritual-header {
+                padding: 2rem 1rem;
+            }
+            
+            .content-container {
+                padding: 2rem 1rem;
+            }
+            
+            .ritual-actions {
+                justify-content: center;
+            }
+            
+            .btn {
+                min-width: 150px;
+            }
+            
+            .cta-section {
+                padding: 3rem 1rem;
+            }
+            
+            .cta-title {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .logo-text {
+                font-size: 1.8rem;
+            }
+            
+            .ritual-info h1 {
+                font-size: 2rem;
+            }
+            
+            .ritual-meta {
+                justify-content: center;
+            }
+            
+            .section-title h2 {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Scroll to top button */
+        .scroll-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-accent);
+            color: var(--text-light);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--shadow-glow);
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(100px);
+            z-index: 1000;
+        }
+        
+        .scroll-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .scroll-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px var(--shadow-glow);
         }
     </style>
 </head>
-
-<body class="bg-dark">
+<body>
     <!-- Header -->
-    <header class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center mb-4 md:mb-0">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center mr-4">
-                        <i class="fas fa-moon text-white text-xl"></i>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-moon"></i>
                     </div>
-                    <h1 class="text-3xl font-cinzel font-bold text-white">Mystica Occulta</h1>
+                    <div class="logo-text font-cinzel">Mystica Occulta</div>
                 </div>
-                
-                <nav class="flex flex-wrap justify-center">
-                    <a href="/index.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Accueil</a>
-                    <a href="/rituals.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Rituels</a>
-                    <a href="/blog.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Blog</a>
-                    <a href="/about.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">À propos</a>
-                    <a href="/contact.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Contact</a>
+                <nav class="nav">
+                    <a href="index.php"><i class="fas fa-home"></i> Accueil</a>
+                    <a href="rituals.php"><i class="fas fa-magic"></i> Rituels</a>
+                    <a href="contact.php"><i class="fas fa-envelope"></i> Contact</a>
                 </nav>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <div class="max-w-5xl mx-auto">
+    <main>
+        <div class="container">
             <!-- Breadcrumbs -->
-            <div class="mb-6 text-gray-400">
-                <a href="/index.php" class="hover:text-pink-400 transition">Accueil</a> &raquo; 
-                <a href="/rituals.php" class="hover:text-pink-400 transition">Rituels</a> &raquo; 
-                <span class="text-purple-400"><?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?></span>
-            </div>
-            
-            <!-- Particules scintillantes en arrière-plan -->
-            <div class="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-                <div class="particles-js" id="particles-js"></div>
+            <div class="breadcrumbs">
+                <a href="index.php">Accueil</a>
+                <span>/</span>
+                <a href="rituals.php">Rituels</a>
+                <span>/</span>
+                <span class="current"><?php echo htmlspecialchars($ritual['title']); ?></span>
             </div>
 
             <!-- Ritual Header -->
-            <div class="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg overflow-hidden shadow-xl mb-8">
-                <div class="p-6 md:p-12">
-                    <div class="flex flex-col lg:flex-row">
-                        <?php if (isset($ritual['featured_image']) && !empty($ritual['featured_image'])): ?>
-                        <div class="lg:w-2/5 mb-6 lg:mb-0 lg:mr-8">
-                            <div class="relative rounded-lg overflow-hidden shadow-lg aspect-w-16 aspect-h-9 md:aspect-w-4 md:aspect-h-3">
-                                <?php 
-                                // Déterminer la source de l'image selon qu'il s'agit d'une URL externe ou d'un fichier local
-                                $image_src = substr($ritual['featured_image'], 0, 4) === 'http' 
-                                    ? $ritual['featured_image'] 
-                                    : $ritual['featured_image']; // Déjà relatif à la racine
+            <div class="ritual-header">
+                <div class="ritual-header-content">
+                    <div class="ritual-media">
+                        <?php if (!empty($ritual['youtube_url'])): ?>
+                            <div class="ritual-video">
+                                <?php
+                                $video_url = $ritual['youtube_url'];
+                                
+                                // Fonction pour extraire l'ID YouTube et convertir en format embed
+                                function convertToYouTubeEmbed($url) {
+                                    $patterns = [
+                                        '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/',
+                                        '/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/',
+                                        '/youtu\.be\/([a-zA-Z0-9_-]+)/',
+                                        '/youtube\.com\/v\/([a-zA-Z0-9_-]+)/'
+                                    ];
+                                    
+                                    foreach ($patterns as $pattern) {
+                                        if (preg_match($pattern, $url, $matches)) {
+                                            return 'https://www.youtube.com/embed/' . $matches[1] . '?rel=0&modestbranding=1&showinfo=0';
+                                        }
+                                    }
+                                    
+                                    // Si ce n'est pas YouTube, retourner l'URL originale
+                                    return $url;
+                                }
+                                
+                                // Convertir l'URL
+                                $embed_url = convertToYouTubeEmbed($video_url);
                                 ?>
-                                <img src="<?php echo htmlspecialchars($image_src); ?>" alt="<?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?>" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-50"></div>
+                                <iframe src="<?php echo htmlspecialchars($embed_url); ?>" 
+                                        frameborder="0" 
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                        allowfullscreen 
+                                        loading="lazy"></iframe>
                             </div>
-                        </div>
                         <?php endif; ?>
                         
-                        <?php if (isset($ritual['youtube_url']) && !empty($ritual['youtube_url'])): 
-                            // Extraire l'ID de la vidéo YouTube
-                            $youtube_id = '';
-                            if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|\/watch\?(?:.*&)?v=|\/embed\/|\/v\/)|youtu\.be\/)([^\?&\"\'<>\#\/\s]+)/', $ritual['youtube_url'], $matches)) {
-                                $youtube_id = $matches[1];
-                            }
-                            if (!empty($youtube_id)): ?>
-                        <div class="md:w-full <?php echo !empty($ritual['featured_image']) ? 'mt-6' : ''; ?> mb-6">
-                            <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg">
-                                <iframe src="https://www.youtube.com/embed/<?php echo htmlspecialchars($youtube_id); ?>" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full"></iframe>
+                        <?php if (!empty($ritual['featured_image'])): ?>
+                            <div class="ritual-image">
+                                <img src="<?php echo htmlspecialchars($ritual['featured_image']); ?>" 
+                                     alt="<?php echo htmlspecialchars($ritual['title']); ?>" 
+                                     loading="lazy">
                             </div>
-                        </div>
-                        <?php endif; endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="ritual-info">
+                        <h1 class="font-cinzel"><?php echo htmlspecialchars($ritual['title']); ?></h1>
                         
-                        <div class="<?php echo !empty($ritual['featured_image']) ? 'md:w-2/3' : 'w-full'; ?>">
-                            <h1 class="text-4xl md:text-5xl font-cinzel font-bold text-gradient mb-4"><?php echo isset($ritual['title']) ? htmlspecialchars($ritual['title']) : ''; ?></h1>
-                            
-                            <?php if (isset($ritual['excerpt']) && !empty($ritual['excerpt'])): ?>
-                            <div class="text-lg text-gray-300 mb-6">
-                                <?php echo isset($ritual['excerpt']) ? nl2br(htmlspecialchars($ritual['excerpt'])) : ''; ?>
+                        <?php if (!empty($ritual['excerpt'])): ?>
+                            <div class="ritual-excerpt">
+                                <?php echo nl2br(htmlspecialchars($ritual['excerpt'])); ?>
                             </div>
+                        <?php endif; ?>
+                        
+                        <div class="ritual-meta">
+                            <?php if (!empty($ritual['category'])): ?>
+                                <div class="meta-item">
+                                    <i class="fas fa-tag"></i>
+                                    <span>Catégorie:</span>
+                                    <span class="meta-value"><?php echo htmlspecialchars($ritual['category']); ?></span>
+                                </div>
                             <?php endif; ?>
                             
-                            <div class="flex flex-wrap mb-6 space-y-3 md:space-y-0">
-                                <?php if (isset($ritual['category']) && !empty($ritual['category'])): ?>
-                                <div class="bg-gray-800 bg-opacity-50 rounded-full px-4 py-2 mr-3 mb-3 flex items-center">
-                                    <i class="fas fa-tag text-purple-400 mr-2"></i>
-                                    <span class="text-gray-300">Catégorie:</span>
-                                    <span class="text-purple-300 ml-1 font-medium"><?php echo isset($ritual['category']) ? htmlspecialchars($ritual['category']) : ''; ?></span>
+                            <?php if (!empty($ritual['duration'])): ?>
+                                <div class="meta-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Durée:</span>
+                                    <span class="meta-value"><?php echo htmlspecialchars($ritual['duration']); ?></span>
                                 </div>
-                                <?php endif; ?>
-                                
-                                <?php if (isset($ritual['duration']) && !empty($ritual['duration'])): ?>
-                                <div class="bg-gray-800 bg-opacity-50 rounded-full px-4 py-2 mr-3 mb-3 flex items-center">
-                                    <i class="fas fa-clock text-purple-400 mr-2"></i>
-                                    <span class="text-gray-300">Durée:</span>
-                                    <span class="text-purple-300 ml-1 font-medium"><?php echo isset($ritual['duration']) ? htmlspecialchars($ritual['duration']) : ''; ?></span>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <?php if (isset($ritual['price']) && !empty($ritual['price'])): ?>
-                                <div class="bg-gray-800 bg-opacity-50 rounded-full px-4 py-2 mb-3 flex items-center">
-                                    <i class="fas fa-coins text-purple-400 mr-2"></i>
-                                    <span class="text-gray-300">Prix:</span>
-                                    <span class="text-pink-300 font-bold ml-1"><?php echo isset($ritual['price']) ? htmlspecialchars($ritual['price']) : ''; ?> €</span>
-                                </div>
-                                <?php endif; ?>
-                            </div>
+                            <?php endif; ?>
                             
-                            <div class="flex flex-wrap mt-6">
-                                <a href="contact.php?ritual=<?php echo urlencode($ritual['slug']); ?>" class="button-magic px-6 py-3 rounded-full text-white font-medium shadow-lg mr-4 mb-3 flex items-center justify-center transition-all hover:translate-y-[-2px] hover:shadow-xl min-w-[180px] pulse-effect">
-                                    <i class="fas fa-envelope mr-2 text-pink-300"></i>Demander ce rituel
-                                </a>
-                                <a href="https://wa.me/?text=<?php echo isset($ritual['title']) ? urlencode('Je suis intéressé(e) par votre rituel: ' . $ritual['title']) : ''; ?>" target="_blank" class="px-6 py-3 rounded-full bg-green-600 text-white font-medium shadow-lg hover:bg-green-700 hover:translate-y-[-2px] hover:shadow-xl transition-all mb-3 flex items-center justify-center min-w-[180px]">
-                                    <i class="fab fa-whatsapp mr-2"></i>WhatsApp
-                                </a>
+                            <?php if (!empty($ritual['price'])): ?>
+                                <div class="meta-item">
+                                    <i class="fas fa-euro-sign"></i>
+                                    <span>Prix:</span>
+                                    <span class="meta-value"><?php echo htmlspecialchars($ritual['price']); ?>€</span>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <div class="meta-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>Publié le:</span>
+                                <span class="meta-value"><?php echo date('d/m/Y', strtotime($ritual['created_at'])); ?></span>
                             </div>
+                        </div>
+                        
+                        <div class="ritual-actions">
+                            <?php if (!empty($ritual['price'])): ?>
+                                <a href="#contact" class="btn btn-primary">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Commander ce rituel
+                                </a>
+                            <?php endif; ?>
+                            
+                            <a href="https://wa.me/67512021?text=Bonjour, je suis intéressé(e) par le rituel: <?php echo urlencode($ritual['title']); ?>" 
+                               class="btn btn-secondary" target="_blank">
+                                <i class="fab fa-whatsapp"></i>
+                                Contacter sur WhatsApp
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Séparateur mystique -->
-            <div class="mystic-divider mb-8"></div>
-            
-            <!-- Ritual Content -->
-            <div class="bg-gradient-to-br from-gray-900 to-indigo-900 bg-opacity-90 rounded-lg overflow-hidden shadow-2xl p-6 md:p-8 mb-12 border border-purple-900 ritual-container">
-                <div class="content-area prose prose-lg prose-invert max-w-none text-gray-200">
-                    <?php 
-                    // Traitement du contenu pour améliorer l'affichage des médias
-                    $content = isset($ritual['content']) ? $ritual['content'] : '';
-                    
-                    // 1. Amélioration des vidéos YouTube
-                    $content = preg_replace_callback('/<iframe[^>]*src=["\'](.*?)["\'].*?><\/iframe>/s', function($matches) {
-                        $src = $matches[1];
-                        return '<div class="media-container"><iframe src="' . $src . '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><div class="media-caption">Vidéo en rapport avec le rituel</div></div>';
-                    }, $content);
-                    
-                    // 2. Amélioration des images (sans remplacer celles qui sont déjà dans un conteneur)
-                    $content = preg_replace_callback('/<img(?![^>]*class=["\']*media-container["\']*)[^>]*src=["\'](.*?)["\'].*?>/s', function($matches) {
-                        $src = $matches[1];
-                        $alt = '';
-                        if (preg_match('/alt=["\'](.*?)["\']/s', $matches[0], $alt_matches)) {
-                            $alt = $alt_matches[1];
-                        }
-                        return '<div class="media-container"><img src="' . $src . '" alt="' . $alt . '" class="ritual-image">' . 
-                               '<div class="media-caption">' . ($alt ? $alt : 'Image illustrant le rituel') . '</div></div>';
-                    }, $content);
-                    
-                    // 3. Traitement des éléments Quill Video
-                    $content = preg_replace_callback('/<div class="ql-video".*?>.*?<iframe.*?src=["\'](.*?)["\'].*?><\/iframe>.*?<\/div>/s', function($matches) {
-                        $src = $matches[1];
-                        return '<div class="media-container"><div class="ql-video"><iframe src="' . $src . '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div><div class="media-caption">Vidéo en rapport avec le rituel</div></div>';
-                    }, $content);
-                    
-                    echo $content;
-                    ?>
+            <!-- Divider -->
+            <div class="mystic-divider"></div>
+
+            <!-- Content -->
+            <div class="content-container">
+                <div class="content-area">
+                    <?php echo $ritual['content']; ?>
                 </div>
+                
+                <!-- Backlinks Section -->
+                <?php if (function_exists('get_backlinks')): ?>
+                    <?php $backlinks = get_backlinks('ritual', $ritual['id']); ?>
+                    <?php if (!empty($backlinks)): ?>
+                        <div class="backlinks-section">
+                            <h3>
+                                <i class="fas fa-external-link-alt"></i>
+                                Références et Sources
+                            </h3>
+                            <div class="backlinks-grid">
+                                <?php foreach ($backlinks as $backlink): ?>
+                                    <?php $formatted = format_backlink_display($backlink); ?>
+                                    <div class="backlink-item">
+                                        <div class="backlink-meta">
+                                            <span class="backlink-type" style="background-color: <?php echo $formatted['color']; ?>20; color: <?php echo $formatted['color']; ?>;">
+                                                <?php echo $formatted['type_label']; ?>
+                                            </span>
+                                            <span class="backlink-domain"><?php echo $formatted['domain']; ?></span>
+                                        </div>
+                                        <h4 class="backlink-title">
+                                            <a href="<?php echo htmlspecialchars($formatted['url']); ?>" target="_blank" rel="noopener">
+                                                <?php echo htmlspecialchars($formatted['title']); ?>
+                                                <i class="fas fa-external-link-alt" style="font-size: 0.8rem; margin-left: 0.5rem;"></i>
+                                            </a>
+                                        </h4>
+                                        <?php if (!empty($formatted['description'])): ?>
+                                            <p class="backlink-description"><?php echo htmlspecialchars($formatted['description']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
 
-            <!-- Séparateur mystique -->
-            <div class="mystic-divider mb-8"></div>
-            
             <!-- Similar Rituals -->
             <?php if (!empty($similar_rituals)): ?>
-            <div class="mb-16">
-                <div class="flex items-center mb-8">
-                    <div class="w-1 h-8 bg-purple-500 rounded mr-3"></div>
-                    <h2 class="text-3xl font-cinzel font-bold text-gradient">Rituels similaires</h2>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <?php foreach ($similar_rituals as $similar): ?>
-                    <a href="ritual.php?slug=<?php echo urlencode($similar['slug']); ?>" class="card rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group">
-                        <div class="relative aspect-w-16 aspect-h-9">
-                            <?php if (!empty($similar['featured_image'])): ?>
-                                <?php if (substr($similar['featured_image'], 0, 4) === 'http'): ?>
-                                    <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" alt="<?php echo htmlspecialchars($similar['title']); ?>" class="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110">
-                                <?php else: ?>
-                                    <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" alt="<?php echo htmlspecialchars($similar['title']); ?>" class="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110">
+                <section class="similar-rituals">
+                    <div class="section-title">
+                        <h2 class="font-cinzel">Rituels Similaires</h2>
+                    </div>
+                    
+                    <div class="rituals-grid">
+                        <?php foreach ($similar_rituals as $similar): ?>
+                            <a href="/<?php echo urlencode($similar['slug']); ?>" class="ritual-card">
+                                <?php if (!empty($similar['featured_image'])): ?>
+                                    <div class="ritual-card-image">
+                                        <img src="<?php echo htmlspecialchars($similar['featured_image']); ?>" 
+                                             alt="<?php echo htmlspecialchars($similar['title']); ?>" 
+                                             loading="lazy">
+                                        <?php if (!empty($similar['price'])): ?>
+                                            <div class="ritual-card-price"><?php echo htmlspecialchars($similar['price']); ?>€</div>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php endif; ?>
-                            <?php else: ?>
-                                <div class="w-full h-full bg-gradient-to-br from-purple-900 to-indigo-900"></div>
-                            <?php endif; ?>
-                            <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-70"></div>
-                            <?php if (!empty($similar['price'])): ?>
-                            <div class="absolute top-4 right-4 bg-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm bg-opacity-90">
-                                <?php echo htmlspecialchars($similar['price']); ?> €
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="p-6">
-                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-purple-300 transition-colors duration-300"><?php echo htmlspecialchars($similar['title']); ?></h3>
-                            <div class="text-purple-400 font-medium text-sm">
-                                <i class="fas fa-arrow-right mr-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1"></i> Découvrir ce rituel
-                            </div>
-                        </div>
-                    </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
+                                
+                                <div class="ritual-card-content">
+                                    <h3 class="ritual-card-title"><?php echo htmlspecialchars($similar['title']); ?></h3>
+                                    <div class="ritual-card-link">
+                                        <span>Découvrir ce rituel</span>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
             <?php endif; ?>
 
-            <!-- Call to action -->
-            <div class="relative bg-mystic rounded-xl p-8 md:p-12 text-center mb-12 shadow-2xl overflow-hidden">
-                <!-- Animated background particles -->
-                <div class="absolute inset-0 opacity-20">
-                    <div class="stars-bg"></div>
-                </div>
-                
-                <div class="relative z-10">
-                    <div class="inline-block mb-6 p-2 rounded-full bg-purple-900 bg-opacity-50">
-                        <div class="bg-purple-800 rounded-full w-12 h-12 flex items-center justify-center">
-                            <i class="fas fa-magic text-pink-300 text-xl"></i>
-                        </div>
+            <!-- Call to Action -->
+            <section class="cta-section">
+                <div class="cta-content">
+                    <div class="cta-icon">
+                        <i class="fas fa-star"></i>
                     </div>
-                    
-                    <h2 class="text-3xl md:text-4xl font-cinzel font-bold text-gradient mb-4">Vous avez des questions ?</h2>
-                    <p class="text-gray-300 mb-8 max-w-2xl mx-auto text-lg">N'hésitez pas à me contacter pour plus d'informations sur ce rituel ou pour discuter de vos besoins spécifiques.</p>
-                    
-                    <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                        <a href="contact.php" class="button-magic px-8 py-4 rounded-full text-white font-medium shadow-lg text-lg transition-all hover:shadow-xl hover:-translate-y-1 flex items-center justify-center min-w-[220px] pulse-effect">
-                            <i class="fas fa-envelope mr-2 text-pink-300"></i> Contactez-moi
-                        </a>
-                        <a href="rituals.php" class="px-8 py-4 rounded-full bg-gray-800 bg-opacity-50 text-white font-medium border border-purple-500 text-lg hover:bg-purple-900 transition-all flex items-center justify-center min-w-[220px]">
-                            <i class="fas fa-arrow-left mr-2"></i> Voir tous les rituels
-                        </a>
-                    </div>
+                    <h2 class="cta-title font-cinzel">Besoin d'un Rituel Personnalisé ?</h2>
+                    <p class="cta-text">
+                        Chaque situation est unique. Contactez-moi pour un rituel sur mesure adapté à vos besoins spécifiques.
+                    </p>
+                    <a href="contact.php" class="btn btn-primary">
+                        <i class="fas fa-envelope"></i>
+                        Me Contacter
+                    </a>
                 </div>
-            </div>
-            
-            <style>
-            .stars-bg {
-                background-image: 
-                    radial-gradient(2px 2px at 20px 30px, #eaeaea, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 40px 70px, #f7f7f7, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
-                    radial-gradient(3px 3px at 120px 10px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 140px 30px, #f7f7f7, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 180px 50px, #fff, rgba(0,0,0,0)),
-                    radial-gradient(3px 3px at 220px 70px, #eee, rgba(0,0,0,0)),
-                    radial-gradient(2px 2px at 240px 100px, #fff, rgba(0,0,0,0));
-                background-size: 400px 400px;
-                animation: stars-move 60s linear infinite;
-                width: 100%;
-                height: 100%;
-                opacity: 0.6;
-            }
-            
-            @keyframes stars-move {
-                0% { background-position: 0 0; }
-                100% { background-position: 400px 400px; }
-            }
-            </style>
+            </section>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-12">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Mystica Occulta</h3>
-                    <p class="text-gray-400 mb-4">Votre portail vers le monde de l'ésotérisme, de la magie et des rituels ancestraux.</p>
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Mystica Occulta</h3>
+                    <p>Découvrez les mystères de l'occultisme et de la magie à travers nos rituels authentiques et puissants.</p>
                 </div>
-                
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Navigation</h3>
-                    <ul class="space-y-2">
-                        <li><a href="index.php" class="text-gray-400 hover:text-purple-400 transition">Accueil</a></li>
-                        <li><a href="rituals.php" class="text-gray-400 hover:text-purple-400 transition">Rituels</a></li>
-                        <li><a href="blog.php" class="text-gray-400 hover:text-purple-400 transition">Blog</a></li>
-                        <li><a href="about.php" class="text-gray-400 hover:text-purple-400 transition">À propos</a></li>
-                        <li><a href="contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
-                    </ul>
+                <div class="footer-section">
+                    <h3>Navigation</h3>
+                    <p><a href="index.php">Accueil</a></p>
+                    <p><a href="rituals.php">Rituels</a></p>
+                    <p><a href="contact.php">Contact</a></p>
                 </div>
-                
-                <div>
-                    <h3 class="text-xl font-bold mb-4 font-cinzel">Contact</h3>
-                    <ul class="space-y-2">
-                        <li class="flex items-start">
-                            <i class="fas fa-envelope mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">contact@mysticaocculta.com</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fab fa-whatsapp mt-1 mr-3 text-purple-400"></i>
-                            <span class="text-gray-400">+33 XX XX XX XX</span>
-                        </li>
-                    </ul>
-                    
-                    <div class="flex space-x-4 mt-6">
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-tiktok"></i></a>
-                    </div>
+                <div class="footer-section">
+                    <h3>Contact</h3>
+                    <p><i class="fas fa-envelope"></i> contact@mysticaocculta.com</p>
+                    <p><i class="fab fa-whatsapp"></i> WhatsApp</p>
                 </div>
             </div>
-            
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500">
+            <div class="footer-bottom">
                 <p>&copy; <?php echo date('Y'); ?> Mystica Occulta. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-top" id="scrollTop">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <!-- JavaScript -->
+    <script>
+        // Scroll to top functionality
+        const scrollTopBtn = document.getElementById('scrollTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 100) {
+                scrollTopBtn.classList.add('visible');
+            } else {
+                scrollTopBtn.classList.remove('visible');
+            }
+        });
+        
+        scrollTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Lazy loading for images
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src || img.src;
+                        img.classList.remove('lazy');
+                        observer.unobserve(img);
+                    }
+                });
+            });
+
+            document.querySelectorAll('img[loading="lazy"]').forEach(img => {
+                imageObserver.observe(img);
+            });
+        }
+
+        // Enhanced error handling for media
+        document.querySelectorAll('img').forEach(img => {
+            img.addEventListener('error', function() {
+                this.style.display = 'none';
+                const container = this.closest('.ritual-image, .ritual-card-image');
+                if (container) {
+                    container.style.background = 'linear-gradient(135deg, var(--primary-purple), var(--secondary-purple))';
+                    container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white; font-size: 3rem;"><i class="fas fa-image"></i></div>';
+                }
+            });
+        });
+
+        // Add loading animation for buttons
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (this.href && !this.href.startsWith('#')) {
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.className = 'fas fa-spinner loading';
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>

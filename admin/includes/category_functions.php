@@ -1,7 +1,9 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 /**
  * Category Management Functions
- * 
+ *
  * This file provides functions for managing categories and their specific features.
  */
 
@@ -10,63 +12,61 @@ require_once 'db_connect.php';
 
 /**
  * Get all categories
- * 
+ *
  * @param string $type Type of categories (blog, ritual, product)
  * @return array List of categories
  */
 function get_all_categories($type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_categories';
         $stmt = $pdo->query("SELECT * FROM $table ORDER BY name ASC");
         return $stmt->fetchAll();
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération des catégories: " . $e->getMessage());
         return [];
     }
 }
 
 /**
  * Get category by ID
- * 
+ *
  * @param int $category_id Category ID
  * @param string $type Type of category (blog, ritual, product)
  * @return array|bool Category data or false if not found
  */
 function get_category_by_id($category_id, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_categories';
         $stmt = $pdo->prepare("SELECT * FROM $table WHERE id = :id");
         $stmt->bindParam(':id', $category_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         if ($stmt->rowCount() === 0) {
             return false;
         }
-        
+
         return $stmt->fetch();
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération de la catégorie: " . $e->getMessage());
         return false;
     }
 }
 
 /**
  * Create a new category
- * 
+ *
  * @param array $data Category data
  * @param string $type Type of category (blog, ritual, product)
  * @return array Status and message
  */
 function create_category($data, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_categories';
-        
+
         // Generate slug if not provided
         if (empty($data['slug'])) {
             $data['slug'] = strtolower(str_replace(' ', '-', $data['name']));
@@ -75,20 +75,20 @@ function create_category($data, $type = 'blog') {
             // Remove multiple dashes
             $data['slug'] = preg_replace('/-+/', '-', $data['slug']);
         }
-        
+
         // Check if slug already exists
         $stmt = $pdo->prepare("SELECT id FROM $table WHERE slug = :slug");
         $stmt->bindParam(':slug', $data['slug']);
         $stmt->execute();
-        
+
         if ($stmt->rowCount() > 0) {
             return ['status' => false, 'message' => "Ce slug est déjà utilisé. Veuillez en choisir un autre."];
         }
-        
+
         // Insert category
-        $stmt = $pdo->prepare("INSERT INTO $table (name, slug, description, parent_id, icon, color, featured) 
+        $stmt = $pdo->prepare("INSERT INTO $table (name, slug, description, parent_id, icon, color, featured)
                               VALUES (:name, :slug, :description, :parent_id, :icon, :color, :featured)");
-        
+
         $stmt->bindParam(':name', $data['name']);
         $stmt->bindParam(':slug', $data['slug']);
         $stmt->bindParam(':description', $data['description']);
@@ -96,15 +96,15 @@ function create_category($data, $type = 'blog') {
         $stmt->bindParam(':icon', $data['icon']);
         $stmt->bindParam(':color', $data['color']);
         $stmt->bindParam(':featured', $data['featured'], PDO::PARAM_BOOL);
-        
+
         $stmt->execute();
-        
+
         // Add category-specific metadata if provided
         if (!empty($data['metadata'])) {
             $category_id = $pdo->lastInsertId();
             add_category_metadata($category_id, $data['metadata'], $type);
         }
-        
+
         return ['status' => true, 'message' => "Catégorie créée avec succès."];
     } catch (PDOException $e) {
         return ['status' => false, 'message' => "Erreur lors de la création de la catégorie: " . $e->getMessage()];
@@ -113,7 +113,7 @@ function create_category($data, $type = 'blog') {
 
 /**
  * Update an existing category
- * 
+ *
  * @param int $category_id Category ID
  * @param array $data Category data
  * @param string $type Type of category (blog, ritual, product)
@@ -121,10 +121,10 @@ function create_category($data, $type = 'blog') {
  */
 function update_category($category_id, $data, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_categories';
-        
+
         // Generate slug if not provided
         if (empty($data['slug'])) {
             $data['slug'] = strtolower(str_replace(' ', '-', $data['name']));
@@ -133,28 +133,28 @@ function update_category($category_id, $data, $type = 'blog') {
             // Remove multiple dashes
             $data['slug'] = preg_replace('/-+/', '-', $data['slug']);
         }
-        
+
         // Check if slug already exists (for another category)
         $stmt = $pdo->prepare("SELECT id FROM $table WHERE slug = :slug AND id != :category_id");
         $stmt->bindParam(':slug', $data['slug']);
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         if ($stmt->rowCount() > 0) {
             return ['status' => false, 'message' => "Ce slug est déjà utilisé. Veuillez en choisir un autre."];
         }
-        
+
         // Update category
-        $stmt = $pdo->prepare("UPDATE $table SET 
-                              name = :name, 
-                              slug = :slug, 
-                              description = :description, 
+        $stmt = $pdo->prepare("UPDATE $table SET
+                              name = :name,
+                              slug = :slug,
+                              description = :description,
                               parent_id = :parent_id,
                               icon = :icon,
                               color = :color,
                               featured = :featured
                               WHERE id = :category_id");
-        
+
         $stmt->bindParam(':name', $data['name']);
         $stmt->bindParam(':slug', $data['slug']);
         $stmt->bindParam(':description', $data['description']);
@@ -163,14 +163,14 @@ function update_category($category_id, $data, $type = 'blog') {
         $stmt->bindParam(':color', $data['color']);
         $stmt->bindParam(':featured', $data['featured'], PDO::PARAM_BOOL);
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
-        
+
         $stmt->execute();
-        
+
         // Update category-specific metadata if provided
         if (!empty($data['metadata'])) {
             update_category_metadata($category_id, $data['metadata'], $type);
         }
-        
+
         return ['status' => true, 'message' => "Catégorie mise à jour avec succès."];
     } catch (PDOException $e) {
         return ['status' => false, 'message' => "Erreur lors de la mise à jour de la catégorie: " . $e->getMessage()];
@@ -179,34 +179,34 @@ function update_category($category_id, $data, $type = 'blog') {
 
 /**
  * Delete a category
- * 
+ *
  * @param int $category_id Category ID
  * @param string $type Type of category (blog, ritual, product)
  * @return array Status and message
  */
 function delete_category($category_id, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_categories';
         $metadata_table = $type . '_category_metadata';
-        
+
         // Begin transaction
         $pdo->beginTransaction();
-        
+
         // Delete category metadata
         $stmt = $pdo->prepare("DELETE FROM $metadata_table WHERE category_id = :category_id");
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Delete category
         $stmt = $pdo->prepare("DELETE FROM $table WHERE id = :category_id");
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         // Commit transaction
         $pdo->commit();
-        
+
         return ['status' => true, 'message' => "Catégorie supprimée avec succès."];
     } catch (PDOException $e) {
         // Rollback transaction on error
@@ -217,7 +217,7 @@ function delete_category($category_id, $type = 'blog') {
 
 /**
  * Add metadata to a category
- * 
+ *
  * @param int $category_id Category ID
  * @param array $metadata Metadata key-value pairs
  * @param string $type Type of category (blog, ritual, product)
@@ -225,10 +225,10 @@ function delete_category($category_id, $type = 'blog') {
  */
 function add_category_metadata($category_id, $metadata, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_category_metadata';
-        
+
         // Create metadata table if it doesn't exist
         $pdo->exec("CREATE TABLE IF NOT EXISTS $table (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -238,10 +238,10 @@ function add_category_metadata($category_id, $metadata, $type = 'blog') {
             UNIQUE KEY unique_meta (category_id, meta_key),
             FOREIGN KEY (category_id) REFERENCES {$type}_categories(id) ON DELETE CASCADE
         )");
-        
+
         // Begin transaction
         $pdo->beginTransaction();
-        
+
         foreach ($metadata as $key => $value) {
             $stmt = $pdo->prepare("INSERT INTO $table (category_id, meta_key, meta_value) VALUES (:category_id, :meta_key, :meta_value)");
             $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
@@ -249,22 +249,21 @@ function add_category_metadata($category_id, $metadata, $type = 'blog') {
             $stmt->bindParam(':meta_value', $value);
             $stmt->execute();
         }
-        
+
         // Commit transaction
         $pdo->commit();
-        
+
         return true;
     } catch (PDOException $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        error_log("Erreur lors de l'ajout des métadonnées: " . $e->getMessage());
         return false;
     }
 }
 
 /**
  * Update metadata for a category
- * 
+ *
  * @param int $category_id Category ID
  * @param array $metadata Metadata key-value pairs
  * @param string $type Type of category (blog, ritual, product)
@@ -272,10 +271,10 @@ function add_category_metadata($category_id, $metadata, $type = 'blog') {
  */
 function update_category_metadata($category_id, $metadata, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_category_metadata';
-        
+
         // Create metadata table if it doesn't exist
         $pdo->exec("CREATE TABLE IF NOT EXISTS $table (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -285,17 +284,17 @@ function update_category_metadata($category_id, $metadata, $type = 'blog') {
             UNIQUE KEY unique_meta (category_id, meta_key),
             FOREIGN KEY (category_id) REFERENCES {$type}_categories(id) ON DELETE CASCADE
         )");
-        
+
         // Begin transaction
         $pdo->beginTransaction();
-        
+
         foreach ($metadata as $key => $value) {
             // Check if metadata exists
             $stmt = $pdo->prepare("SELECT id FROM $table WHERE category_id = :category_id AND meta_key = :meta_key");
             $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
             $stmt->bindParam(':meta_key', $key);
             $stmt->execute();
-            
+
             if ($stmt->rowCount() > 0) {
                 // Update existing metadata
                 $stmt = $pdo->prepare("UPDATE $table SET meta_value = :meta_value WHERE category_id = :category_id AND meta_key = :meta_key");
@@ -303,63 +302,61 @@ function update_category_metadata($category_id, $metadata, $type = 'blog') {
                 // Insert new metadata
                 $stmt = $pdo->prepare("INSERT INTO $table (category_id, meta_key, meta_value) VALUES (:category_id, :meta_key, :meta_value)");
             }
-            
+
             $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
             $stmt->bindParam(':meta_key', $key);
             $stmt->bindParam(':meta_value', $value);
             $stmt->execute();
         }
-        
+
         // Commit transaction
         $pdo->commit();
-        
+
         return true;
     } catch (PDOException $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        error_log("Erreur lors de la mise à jour des métadonnées: " . $e->getMessage());
         return false;
     }
 }
 
 /**
  * Get metadata for a category
- * 
+ *
  * @param int $category_id Category ID
  * @param string $type Type of category (blog, ritual, product)
  * @return array Metadata key-value pairs
  */
 function get_category_metadata($category_id, $type = 'blog') {
     global $pdo;
-    
+
     try {
         $table = $type . '_category_metadata';
-        
+
         // Check if table exists
         $stmt = $pdo->query("SHOW TABLES LIKE '$table'");
         if ($stmt->rowCount() === 0) {
             return [];
         }
-        
+
         $stmt = $pdo->prepare("SELECT meta_key, meta_value FROM $table WHERE category_id = :category_id");
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         $metadata = [];
         while ($row = $stmt->fetch()) {
             $metadata[$row['meta_key']] = $row['meta_value'];
         }
-        
+
         return $metadata;
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération des métadonnées: " . $e->getMessage());
         return [];
     }
 }
 
 /**
  * Get category-specific form fields
- * 
+ *
  * @param string $category_slug Category slug
  * @param string $type Type of category (blog, ritual, product)
  * @return array Form fields configuration
@@ -388,10 +385,10 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             'required' => false
         ]
     ];
-    
+
     // Category-specific fields
     $category_fields = [];
-    
+
     // Love category fields
     if ($category_slug === 'love' || $category_slug === 'amour') {
         $category_fields = [
@@ -440,7 +437,7 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Protection category fields
     else if ($category_slug === 'protection') {
         $category_fields = [
@@ -493,7 +490,7 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Prosperity category fields
     else if ($category_slug === 'prosperity' || $category_slug === 'prosperite') {
         $category_fields = [
@@ -531,7 +528,7 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Healing category fields
     else if ($category_slug === 'healing' || $category_slug === 'guerison') {
         $category_fields = [
@@ -565,7 +562,7 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Divination category fields
     else if ($category_slug === 'divination') {
         $category_fields = [
@@ -600,14 +597,14 @@ function get_category_form_fields($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Merge default and category-specific fields
     return array_merge($default_fields, $category_fields);
 }
 
 /**
  * Get category-specific display settings
- * 
+ *
  * @param string $category_slug Category slug
  * @param string $type Type of category (blog, ritual, product)
  * @return array Display settings
@@ -620,10 +617,10 @@ function get_category_display_settings($category_slug, $type = 'blog') {
         'layout' => 'standard',
         'sidebar_widgets' => ['recent', 'categories', 'tags']
     ];
-    
+
     // Category-specific settings
     $category_settings = [];
-    
+
     // Love category settings
     if ($category_slug === 'love' || $category_slug === 'amour') {
         $category_settings = [
@@ -642,7 +639,7 @@ function get_category_display_settings($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Protection category settings
     else if ($category_slug === 'protection') {
         $category_settings = [
@@ -661,7 +658,7 @@ function get_category_display_settings($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Prosperity category settings
     else if ($category_slug === 'prosperity' || $category_slug === 'prosperite') {
         $category_settings = [
@@ -680,7 +677,7 @@ function get_category_display_settings($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Healing category settings
     else if ($category_slug === 'healing' || $category_slug === 'guerison') {
         $category_settings = [
@@ -699,7 +696,7 @@ function get_category_display_settings($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Divination category settings
     else if ($category_slug === 'divination') {
         $category_settings = [
@@ -718,7 +715,7 @@ function get_category_display_settings($category_slug, $type = 'blog') {
             ]
         ];
     }
-    
+
     // Merge default and category-specific settings
     return array_merge($default_settings, $category_settings);
 }

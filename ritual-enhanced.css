@@ -1,0 +1,239 @@
+/* Enhanced spacing and margins for ritual.php */
+body {
+    line-height: 1.8;
+    letter-spacing: 0.01em;
+}
+
+/* Improved container spacing */
+.container {
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    max-width: 90% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Enhanced main content spacing */
+main {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* Center the main container */
+main .max-w-5xl {
+    max-width: 85% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Improved ritual container spacing */
+.ritual-container {
+    padding: 3rem !important;
+    margin-bottom: 4rem !important;
+    margin-top: 2rem !important;
+    max-width: 90% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+@media (min-width: 768px) {
+    .ritual-container {
+        padding: 3.5rem !important;
+    }
+}
+
+/* Enhanced content spacing */
+.content-area {
+    line-height: 2.2 !important;
+    font-size: 1.125rem;
+    padding: 2rem !important;
+    max-width: 90% !important;
+    margin: 0 auto !important;
+}
+
+.content-area p {
+    margin-bottom: 2.5rem !important;
+    margin-top: 1.5rem !important;
+}
+
+.content-area h2 {
+    margin-top: 3rem !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0.75rem;
+    text-align: center !important;
+    max-width: 90% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.content-area h3 {
+    margin-top: 2.5rem !important;
+    margin-bottom: 1.25rem !important;
+    text-align: center !important;
+    max-width: 90% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Improved list spacing */
+.content-area ul, 
+.content-area ol {
+    margin-left: 2rem !important;
+    margin-bottom: 2rem !important;
+    margin-top: 1rem !important;
+}
+
+.content-area li {
+    margin-bottom: 1rem !important;
+    padding-left: 0.5rem;
+}
+
+/* Enhanced media container spacing */
+.media-container {
+    margin: 3rem auto !important;
+    padding: 2rem !important;
+    max-width: 85% !important;
+}
+
+/* Improved header spacing */
+header .container {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+/* Enhance header layout */
+header .flex.flex-col.md\\:flex-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+/* Style for the logo area */
+header .flex.items-center.mb-4.md\\:mb-0 {
+    margin-right: 2rem !important;
+}
+
+/* Style for the site title */
+header h1.text-3xl {
+    font-size: 2.25rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Enhanced navigation spacing */
+nav a {
+    padding: 0.75rem 1.75rem !important;
+    margin: 0 0.5rem !important;
+    font-size: 1.1rem !important;
+}
+
+/* Improved breadcrumbs spacing */
+.breadcrumbs, 
+div.mb-6.text-gray-400 {
+    margin-bottom: 3rem !important;
+    padding: 1.5rem 0 !important;
+    line-height: 1.8 !important;
+    font-size: 1.1rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-bottom: 1px solid rgba(114, 9, 183, 0.3) !important;
+}
+
+/* Style for breadcrumbs links */
+div.mb-6.text-gray-400 a {
+    margin: 0 1rem !important;
+    padding: 0.5rem 0.75rem !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Style for breadcrumbs separator */
+div.mb-6.text-gray-400 {
+    position: relative !important;
+}
+
+/* Enhance the article title in breadcrumbs */
+div.mb-6.text-gray-400 span.text-purple-400 {
+    font-weight: bold !important;
+    font-size: 1.2rem !important;
+    padding: 0.5rem 1rem !important;
+    background: rgba(114, 9, 183, 0.1) !important;
+    border-radius: 0.5rem !important;
+    margin-left: 1rem !important;
+}
+
+/* Enhanced ritual header spacing */
+.ritual-header {
+    padding: 2rem !important;
+}
+
+@media (min-width: 768px) {
+    .ritual-header {
+        padding: 3rem !important;
+    }
+}
+
+/* Improved button spacing */
+.button-magic, 
+.rounded-full {
+    padding: 0.875rem 1.75rem !important;
+    margin-right: 1.25rem !important;
+    margin-bottom: 1.25rem !important;
+}
+
+/* Enhanced divider spacing */
+.mystic-divider {
+    margin: 3rem 0 !important;
+}
+
+/* Improved footer spacing */
+footer {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+
+footer .container {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+
+/* Enhanced mobile spacing */
+@media (max-width: 640px) {
+    .container {
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+    }
+    
+    .ritual-container {
+        padding: 1.75rem !important;
+    }
+    
+    .content-area p {
+        margin-bottom: 2rem !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    
+    .button-magic, 
+    .rounded-full {
+        margin-bottom: 1rem !important;
+    }
+}
+
+/* Enhanced paragraph spacing */
+p {
+    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    line-height: 1.8;
+    max-width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: justify;
+}
+
+/* Improved spacing for ritual steps */
+.ritual-step {
+    margin-bottom: 3rem !important;
+    padding-left: 4rem !important;
+}

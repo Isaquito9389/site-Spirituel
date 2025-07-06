@@ -1,9 +1,7 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage forcé des erreurs PHP pour le debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_start();
 
 // Check if user is logged in
@@ -45,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name']);
         $content = trim($_POST['content']);
         $status = $_POST['status'];
-        
+
         // Valider les données
         if (empty($name) || empty($content)) {
             $message = "Le nom et le contenu sont obligatoires.";
@@ -68,32 +66,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     )");
                 }
-                
+
                 // Préparer la requête SQL selon qu'il s'agit d'une insertion ou d'une mise à jour
                 if ($testimonial_id > 0) {
                     // Mise à jour d'un témoignage existant
-                    $sql = "UPDATE testimonials SET 
-                            author_name = :name, 
-                            content = :content, 
+                    $sql = "UPDATE testimonials SET
+                            author_name = :name,
+                            content = :content,
                             status = :status
                             WHERE id = :id";
-                    
+
                     $stmt = $pdo->prepare($sql);
                     $stmt->bindParam(':id', $testimonial_id, PDO::PARAM_INT);
                 } else {
                     // Insertion d'un nouveau témoignage
-                    $sql = "INSERT INTO testimonials (author_name, content, status) 
+                    $sql = "INSERT INTO testimonials (author_name, content, status)
                             VALUES (:name, :content, :status)";
-                    
+
                     $stmt = $pdo->prepare($sql);
                 }
-                
+
                 // Lier les paramètres et exécuter
                 $stmt->bindParam(':name', $name, PDO::PARAM_STR);
                 $stmt->bindParam(':content', $content, PDO::PARAM_STR);
                 $stmt->bindParam(':status', $status, PDO::PARAM_STR);
                 $stmt->execute();
-                
+
                 // Message de succès
                 if ($testimonial_id > 0) {
                     $message = "Le témoignage a été mis à jour avec succès.";
@@ -101,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "Le témoignage a été ajouté avec succès.";
                 }
                 $messageType = "success";
-                
+
                 // Redirection vers la liste
                 header("Location: testimonials.php?message=" . urlencode($message) . "&type=" . $messageType);
                 exit;
@@ -113,15 +111,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['delete_testimonial'])) {
         // Suppression d'un témoignage
         $testimonial_id = intval($_POST['testimonial_id']);
-        
+
         try {
             $stmt = $pdo->prepare("DELETE FROM testimonials WHERE id = :id");
             $stmt->bindParam(':id', $testimonial_id, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             $message = "Le témoignage a été supprimé avec succès.";
             $messageType = "success";
-            
+
             // Redirection vers la liste
             header("Location: testimonials.php?message=" . urlencode($message) . "&type=" . $messageType);
             exit;
@@ -133,16 +131,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Approuver ou rejeter un témoignage
         $testimonial_id = intval($_POST['testimonial_id']);
         $new_status = isset($_POST['approve_testimonial']) ? 'approved' : 'rejected';
-        
+
         try {
             $stmt = $pdo->prepare("UPDATE testimonials SET status = :status WHERE id = :id");
             $stmt->bindParam(':status', $new_status, PDO::PARAM_STR);
             $stmt->bindParam(':id', $testimonial_id, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             $message = "Le statut du témoignage a été mis à jour.";
             $messageType = "success";
-            
+
             // Redirection vers la liste
             header("Location: testimonials.php?message=" . urlencode($message) . "&type=" . $messageType);
             exit;
@@ -201,21 +199,21 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Témoignages - Version Simple</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background-color: #171717; 
-            color: #e0e0e0; 
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #171717;
+            color: #e0e0e0;
         }
         h1, h2 { color: #c0c0c0; }
-        .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 20px; 
-            padding-bottom: 10px; 
-            border-bottom: 1px solid #444; 
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
         }
         .button {
             display: inline-block;
@@ -235,30 +233,30 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
         .button-success:hover { background-color: #065f46; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; }
-        input, textarea, select { 
-            width: 100%; 
-            padding: 8px; 
-            border: 1px solid #444; 
-            background-color: #222; 
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #444;
+            background-color: #222;
             color: #e0e0e0;
             border-radius: 4px;
         }
         textarea { min-height: 100px; }
-        .message { 
-            padding: 10px; 
-            margin-bottom: 15px; 
-            border-radius: 4px; 
+        .message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
         }
         .message-error { background-color: rgba(220, 38, 38, 0.3); }
         .message-success { background-color: rgba(22, 163, 74, 0.3); }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
-        th, td { 
-            padding: 8px; 
-            text-align: left; 
-            border-bottom: 1px solid #444; 
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #444;
         }
         th { background-color: #222; }
         tr:hover { background-color: #272727; }
@@ -292,13 +290,13 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
             <a href="?logout=true" class="button">Déconnexion</a>
         </div>
     </div>
-    
+
     <?php if (!empty($message)): ?>
         <div class="message <?php echo $messageType === 'success' ? 'message-success' : 'message-error'; ?>">
             <?php echo $message; ?>
         </div>
     <?php endif; ?>
-    
+
     <?php if ($action === 'list'): ?>
         <?php if (empty($testimonials)): ?>
             <div class="card" style="text-align: center; padding: 40px;">
@@ -324,7 +322,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                                 <td><?php echo htmlspecialchars(substr($item['content'], 0, 100)) . (strlen($item['content']) > 100 ? '...' : ''); ?></td>
                                 <td>
                                     <span class="status status-<?php echo $item['status']; ?>">
-                                        <?php 
+                                        <?php
                                             switch($item['status']) {
                                                 case 'pending': echo 'En attente'; break;
                                                 case 'approved': echo 'Approuvé'; break;
@@ -337,7 +335,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                                 <td><?php echo date('d/m/Y', strtotime($item['created_at'])); ?></td>
                                 <td>
                                     <a href="?action=edit&id=<?php echo $item['id']; ?>" class="button">Éditer</a>
-                                    
+
                                     <?php if ($item['status'] === 'pending'): ?>
                                         <form method="post" style="display:inline;">
                                             <input type="hidden" name="testimonial_id" value="<?php echo $item['id']; ?>">
@@ -348,7 +346,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                                             <button type="submit" name="reject_testimonial" class="button button-danger">Rejeter</button>
                                         </form>
                                     <?php endif; ?>
-                                    
+
                                     <form method="post" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce témoignage ?');">
                                         <input type="hidden" name="testimonial_id" value="<?php echo $item['id']; ?>">
                                         <button type="submit" name="delete_testimonial" class="button button-danger">Supprimer</button>
@@ -366,17 +364,17 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                 <?php if ($action === 'edit' && $testimonial): ?>
                     <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['id']; ?>">
                 <?php endif; ?>
-                
+
                 <div class="form-group">
                     <label for="name">Nom du client *</label>
                     <input type="text" id="name" name="name" required value="<?php echo $testimonial ? htmlspecialchars($testimonial['author_name'] ?? $testimonial['name'] ?? '') : ''; ?>">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="content">Témoignage *</label>
                     <textarea id="content" name="content" required><?php echo $testimonial ? htmlspecialchars($testimonial['content']) : ''; ?></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="status">Statut</label>
                     <select id="status" name="status">
@@ -385,7 +383,7 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
                         <option value="rejected" <?php echo ($testimonial && $testimonial['status'] === 'rejected') ? 'selected' : ''; ?>>Rejeté</option>
                     </select>
                 </div>
-                
+
                 <div style="text-align: right; margin-top: 20px;">
                     <a href="testimonials.php" class="button" style="background-color: #4b5563;">Annuler</a>
                     <button type="submit" name="save_testimonial" class="button">

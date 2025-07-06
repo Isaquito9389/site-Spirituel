@@ -1,0 +1,88 @@
+# Robots.txt pour site spirituel
+# Généré le 07/01/2025
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://maitrespirituel.com/sitemap.xml
+Sitemap: https://maitrespirituel.com/sitemap.php
+
+# Interdire l'accès aux dossiers sensibles
+Disallow: /admin/
+Disallow: /includes/
+Disallow: /logs/
+Disallow: /config.php
+Disallow: /bootstrap.php
+Disallow: /.htaccess
+Disallow: /api/
+
+# Interdire l'accès aux fichiers temporaires et de sauvegarde
+Disallow: /*.tmp
+Disallow: /*.bak
+Disallow: /*.log
+Disallow: /*~
+
+# Autoriser l'accès aux images et ressources
+Allow: /uploads/images/
+Allow: /assets/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.webp
+Allow: /*.svg
+Allow: /*.ico
+
+# Interdire l'indexation des pages de test
+Disallow: /test*
+Disallow: /*test*
+
+# Interdire les paramètres de session et de debug
+Disallow: /*?debug=*
+Disallow: /*?session=*
+Disallow: /*?admin=*
+
+# Crawl-delay pour éviter la surcharge du serveur
+Crawl-delay: 1
+
+# Instructions spécifiques pour les principaux moteurs de recherche
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 2
+
+# Interdire les bots malveillants
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+# Autoriser les bots de réseaux sociaux pour les aperçus
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /

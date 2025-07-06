@@ -1,7 +1,9 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 /**
  * WordPress Database Update
- * 
+ *
  * This script adds the wp_post_id column to the blog_posts table
  * to store WordPress post IDs for synchronization.
  */

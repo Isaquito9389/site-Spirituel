@@ -1,5 +1,7 @@
 <?php
-require_once 'admin/includes/db_connect.php';
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
+require_once 'includes/db_connect.php';
 
 // Définir les options du site par défaut
 $siteName = 'Mystica Occulta';
@@ -13,11 +15,11 @@ try {
         $stmt = $pdo->prepare("SELECT option_name, option_value FROM site_options WHERE option_name IN ('site_name', 'site_description')");
         $stmt->execute();
         $options = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        
+
         if (isset($options['site_name'])) {
             $siteName = $options['site_name'];
         }
-        
+
         if (isset($options['site_description'])) {
             $siteDescription = $options['site_description'];
         }
@@ -32,10 +34,10 @@ $pageContent = [
     'meta_description' => 'Découvrez notre histoire, notre mission et nos valeurs.',
     'content' => '<h2>Notre Histoire</h2>
     <p>Bienvenue dans notre espace dédié à la spiritualité et au bien-être. ' . $siteName . ' a été créé avec la passion de partager des connaissances ancestrales et modernes pour vous accompagner dans votre cheminement spirituel.</p>
-    
+
     <h2>Notre Mission</h2>
     <p>Nous nous engageons à vous offrir des rituels, des consultations et des produits de qualité qui vous aideront à vous connecter avec votre essence profonde et à trouver l\'harmonie.</p>
-    
+
     <h2>Nos Valeurs</h2>
     <ul>
         <li>Authenticité dans notre approche</li>
@@ -71,19 +73,45 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> | <?php echo htmlspecialchars($siteName); ?></title>
+
+    <!-- Meta tags pour SEO -->
     <meta name="description" content="<?php echo htmlspecialchars($metaDescription); ?>">
-    
+    <meta name="keywords" content="à propos, mystica occulta, spiritualité, ésotérisme, magie, histoire, mission, valeurs, services spirituels">
+    <meta name="author" content="<?php echo htmlspecialchars($siteName); ?>">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.mystica-occulta.com/about.php">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.mystica-occulta.com/about.php">
+    <meta property="og:title" content="<?php echo htmlspecialchars($pageTitle); ?> | <?php echo htmlspecialchars($siteName); ?>">
+    <meta property="og:description" content="<?php echo htmlspecialchars($metaDescription); ?>">
+    <meta property="og:image" content="https://www.mystica-occulta.com/assets/images/og-image-about.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.mystica-occulta.com/about.php">
+    <meta property="twitter:title" content="<?php echo htmlspecialchars($pageTitle); ?> | <?php echo htmlspecialchars($siteName); ?>">
+    <meta property="twitter:description" content="<?php echo htmlspecialchars($metaDescription); ?>">
+    <meta property="twitter:image" content="https://www.mystica-occulta.com/assets/images/og-image-about.jpg">
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -111,14 +139,14 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
                     <a href="index.php" class="text-2xl font-bold font-serif"><?php echo htmlspecialchars($siteName); ?></a>
                     <p class="text-sm text-purple-200"><?php echo htmlspecialchars($siteDescription); ?></p>
                 </div>
-                
+
                 <!-- Mobile menu button -->
                 <div class="md:hidden">
                     <button id="mobile-menu-button" class="text-white focus:outline-none">
                         <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
-                
+
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-1">
                     <a href="index.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Accueil</a>
@@ -130,7 +158,7 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
                     <a href="contact.php" class="px-4 py-2 text-white hover:text-pink-300 transition duration-300">Contact</a>
                 </nav>
             </div>
-            
+
             <!-- Mobile Navigation -->
             <div id="mobile-menu" class="md:hidden hidden mt-4 pb-4">
                 <nav class="flex flex-col space-y-2">
@@ -177,7 +205,7 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
                         <a href="#" class="text-white hover:text-purple-300 transition"><i class="fab fa-pinterest"></i></a>
                     </div>
                 </div>
-                
+
                 <div>
                     <h4 class="text-xl font-serif mb-4">Liens Rapides</h4>
                     <ul class="space-y-2">
@@ -190,7 +218,7 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
                         <li><a href="contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
                     </ul>
                 </div>
-                
+
                 <div>
                     <h4 class="text-xl font-serif mb-4">Contactez-nous</h4>
                     <ul class="space-y-2">
@@ -209,7 +237,7 @@ $metaDescription = isset($pageContent['meta_description']) ? $pageContent['meta_
                     </ul>
                 </div>
             </div>
-            
+
             <div class="border-t border-purple-800 pt-6 mt-6 text-center text-sm">
                 <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($siteName); ?>. Tous droits réservés.</p>
             </div>

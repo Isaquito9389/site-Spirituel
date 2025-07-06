@@ -1,8 +1,7 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage des erreurs en mode développement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 // Gestionnaire d'erreur personnalisé pour éviter les erreurs 500
 set_error_handler(function(
     $errno, $errstr, $errfile, $errline
@@ -11,13 +10,12 @@ set_error_handler(function(
         return false;
     }
     $error_message = "Error [$errno] $errstr - $errfile:$errline";
-    error_log($error_message);
     echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">\n<h3>Une erreur est survenue</h3>\n<p>Nous avons rencontré un problème lors du traitement de votre demande. Veuillez réessayer plus tard ou contacter l'administrateur.</p>\n</div>";
     return true;
 }, E_ALL);
 
 // Inclusion de la connexion à la base de données
-require_once 'admin/includes/db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Vérification de l'existence de la table products
 try {
@@ -37,7 +35,7 @@ try {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
-        
+
         // Créer quelques produits de démonstration
         $demo_products = [
             [
@@ -81,7 +79,7 @@ try {
                 'stock' => 12
             ]
         ];
-        
+
         $stmt = $pdo->prepare("INSERT INTO products (title, slug, description, price, category, featured_image, status, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         foreach ($demo_products as $product) {
             $stmt->execute([
@@ -97,8 +95,7 @@ try {
         }
     }
 } catch (PDOException $e) {
-    error_log("Erreur lors de la vérification/création de la table products: " . $e->getMessage());
-}
+    }
 
 // Pagination
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -136,7 +133,7 @@ try {
     }
     $stmt_count->execute();
     $total_products = $stmt_count->fetchColumn();
-    
+
     // Récupération des produits
     $stmt = $pdo->prepare($sql);
     if ($category) {
@@ -147,8 +144,7 @@ try {
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération des produits: " . $e->getMessage());
-}
+    }
 
 // Calcul du nombre total de pages
 $total_pages = ceil($total_products / $per_page);
@@ -161,8 +157,7 @@ try {
         $categories[] = $row['category'];
     }
 } catch (PDOException $e) {
-    error_log("Erreur lors de la récupération des catégories: " . $e->getMessage());
-}
+    }
 
 // Titre de la page
 $page_title = "Boutique Ésotérique - Mystica Occulta";
@@ -176,51 +171,76 @@ if ($category) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?></title>
+
     <!-- Meta tags pour SEO -->
     <meta name="description" content="Découvrez notre collection d'objets magiques et ésotériques pour amplifier vos rituels et pratiques spirituelles.">
-    
+    <meta name="keywords" content="boutique ésotérique, objets magiques, rituels, talismans, bougies rituelles, encens, cristaux, magie, spiritualité, mystica occulta">
+    <meta name="author" content="Mystica Occulta">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.mystica-occulta.com/shop.php<?php echo isset($_GET['category']) ? '?category='.urlencode($_GET['category']) : ''; ?>">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.mystica-occulta.com/shop.php<?php echo isset($_GET['category']) ? '?category='.urlencode($_GET['category']) : ''; ?>">
+    <meta property="og:title" content="<?php echo htmlspecialchars($page_title); ?>">
+    <meta property="og:description" content="Découvrez notre collection d'objets magiques et ésotériques pour amplifier vos rituels et pratiques spirituelles.">
+    <meta property="og:image" content="https://www.mystica-occulta.com/assets/images/og-image-shop.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.mystica-occulta.com/shop.php<?php echo isset($_GET['category']) ? '?category='.urlencode($_GET['category']) : ''; ?>">
+    <meta property="twitter:title" content="<?php echo htmlspecialchars($page_title); ?>">
+    <meta property="twitter:description" content="Découvrez notre collection d'objets magiques et ésotériques pour amplifier vos rituels et pratiques spirituelles.">
+    <meta property="twitter:image" content="https://www.mystica-occulta.com/assets/images/og-image-shop.jpg">
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap');
-        
+
         body {
             font-family: 'Merriweather', serif;
             background-color: #0f0e17;
             color: #fffffe;
         }
-        
+
         .font-cinzel {
             font-family: 'Cinzel Decorative', cursive;
         }
-        
+
         .bg-mystic {
             background: radial-gradient(circle at center, #3a0ca3 0%, #1a1a2e 70%);
         }
-        
+
         .button-magic {
             background: linear-gradient(45deg, #7209b7, #3a0ca3);
             box-shadow: 0 4px 15px rgba(247, 37, 133, 0.4);
             transition: all 0.3s ease;
         }
-        
+
         .button-magic:hover {
             transform: translateY(-3px);
             box-shadow: 0 7px 20px rgba(247, 37, 133, 0.6);
         }
-        
+
         .category-filter.active {
             background-color: #7209b7;
             color: white;
         }
-        
+
         .product-card {
             background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .product-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 15px 30px rgba(247, 37, 133, 0.4);
@@ -307,7 +327,7 @@ if ($category) {
                     <div class="p-4">
                         <h3 class="font-cinzel text-xl font-bold mb-2 text-white"><?php echo htmlspecialchars($product['title']); ?></h3>
                         <p class="text-gray-400 text-sm mb-3">
-                            <?php 
+                            <?php
                                 $description = isset($product['description']) ? $product['description'] : '';
                                 echo htmlspecialchars(substr($description, 0, 100)) . (strlen($description) > 100 ? '...' : '');
                             ?>
@@ -338,18 +358,18 @@ if ($category) {
                     <i class="fas fa-chevron-left mr-1"></i> Précédent
                 </a>
                 <?php endif; ?>
-                
-                <?php 
+
+                <?php
                 $start_page = max(1, $page - 2);
                 $end_page = min($start_page + 4, $total_pages);
-                
-                for ($i = $start_page; $i <= $end_page; $i++): 
+
+                for ($i = $start_page; $i <= $end_page; $i++):
                 ?>
                 <a href="shop.php?page=<?php echo $i; ?><?php echo $category ? '&category='.urlencode($category) : ''; ?>" class="px-4 py-2 mx-1 rounded-lg <?php echo ($i == $page) ? 'bg-purple-700 text-white' : 'bg-gray-800 text-white hover:bg-gray-700'; ?> transition">
                     <?php echo $i; ?>
                 </a>
                 <?php endfor; ?>
-                
+
                 <?php if ($page < $total_pages): ?>
                 <a href="shop.php?page=<?php echo $page+1; ?><?php echo $category ? '&category='.urlencode($category) : ''; ?>" class="px-4 py-2 mx-1 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">
                     Suivant <i class="fas fa-chevron-right ml-1"></i>
@@ -377,7 +397,7 @@ if ($category) {
                     <h3 class="text-xl font-bold mb-4 font-cinzel">Mystica Occulta</h3>
                     <p class="text-gray-400 mb-4">Votre portail vers le monde de l'ésotérisme, de la magie et des rituels ancestraux.</p>
                 </div>
-                
+
                 <div>
                     <h3 class="text-xl font-bold mb-4 font-cinzel">Navigation</h3>
                     <ul class="space-y-2">
@@ -388,7 +408,7 @@ if ($category) {
                         <li><a href="contact.php" class="text-gray-400 hover:text-purple-400 transition">Contact</a></li>
                     </ul>
                 </div>
-                
+
                 <div>
                     <h3 class="text-xl font-bold mb-4 font-cinzel">Contact</h3>
                     <ul class="space-y-2">
@@ -401,7 +421,7 @@ if ($category) {
                             <a href="https://wa.me/22967512021" target="_blank" class="text-gray-400 hover:text-purple-400 transition">+229 01 67 51 20 21</a>
                         </li>
                     </ul>
-                    
+
                     <div class="flex space-x-4 mt-6">
                         <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" class="text-purple-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
@@ -409,7 +429,7 @@ if ($category) {
                     </div>
                 </div>
             </div>
-            
+
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500">
                 <p>&copy; <?php echo date('Y'); ?> Mystica Occulta. Tous droits réservés.</p>
             </div>
@@ -444,39 +464,39 @@ if ($category) {
         let currentProductId = 0;
         let currentProductName = '';
         let currentProductPrice = 0;
-        
+
         function addToCart(productId, productName, price) {
             // Stocker les informations du produit
             currentProductId = productId;
             currentProductName = productName;
             currentProductPrice = price;
-            
+
             // Mettre à jour le texte du modal
             document.getElementById('modalProductTitle').textContent = 'Confirmation de commande';
-            document.getElementById('modalConfirmText').textContent = 
+            document.getElementById('modalConfirmText').textContent =
                 `Vous allez commander "${productName}" pour ${price}€. Continuer?`;
-            
+
             // Afficher le modal
             document.getElementById('orderConfirmModal').classList.remove('hidden');
         }
-        
+
         // Gestionnaire pour le bouton de confirmation
         document.getElementById('confirmOrderBtn').addEventListener('click', function() {
             // Cacher le modal
             document.getElementById('orderConfirmModal').classList.add('hidden');
-            
+
             // Redirection vers WhatsApp avec le message préformaté
             const phoneNumber = "22967512021"; // Format correct pour WhatsApp
             const message = `Bonjour, je souhaite commander le produit: ${currentProductName} (${currentProductPrice}€). Pouvez-vous me donner les informations sur les moyens de paiement disponibles ?`;
             window.location.href = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
         });
-        
+
         // Gestionnaire pour le bouton d'annulation
         document.getElementById('cancelOrderBtn').addEventListener('click', function() {
             // Simplement cacher le modal
             document.getElementById('orderConfirmModal').classList.add('hidden');
         });
-        
+
         // Fermer le modal si l'utilisateur clique en dehors
         document.getElementById('orderConfirmModal').addEventListener('click', function(event) {
             if (event.target === this) {

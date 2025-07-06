@@ -1,8 +1,7 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Affichage forcé des erreurs PHP pour le debug
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 // Custom error handler to prevent 500 errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (error_reporting() === 0) {
@@ -10,8 +9,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
     }
     
     $error_message = "Error [$errno] $errstr - $errfile:$errline";
-    error_log($error_message);
-    
     if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
         echo "<div style=\"padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px;\">
             <h3>Une erreur est survenue</h3>
@@ -44,6 +41,7 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 // Include database connection and WordPress API functions
 require_once 'includes/db_connect.php';
 require_once 'includes/wp_api_connect.php';
+require_once 'includes/backlink_functions.php';
 
 // Initialize variables
 $action = isset($_GET['action']) ? $_GET['action'] : 'list';
@@ -232,10 +230,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $messageType = "error";
                             
                             // Log detailed error for debugging
-                            error_log("WordPress Sync Error:");
-                            error_log("Status Code: " . ($wp_response['status'] ?? 'Unknown'));
-                            error_log("Error Details: " . print_r($wp_error_details, true));
-                            
                             // Add more specific error information
                             if (is_array($wp_error_details)) {
                                 if (isset($wp_error_details['code'])) {
@@ -264,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } elseif (is_array($wp_response['error'])) {
                                         $error_str = json_encode($wp_response['error']);
                                     } else {
-                                        $error_str = print_r($wp_response['error'], true);
+                                        $error_str = 'Unknown error format';
                                     }
                                     $error_details .= " Réponse: " . substr($error_str, 0, 100) . "...";
                                 }
@@ -345,7 +339,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } elseif (is_array($wp_response['error'])) {
                                         $error_str = json_encode($wp_response['error']);
                                     } else {
-                                        $error_str = print_r($wp_response['error'], true);
+                                        $error_str = 'Unknown error format';
                                     }
                                     $error_details .= " Réponse: " . substr($error_str, 0, 100) . "...";
                                 }
@@ -406,7 +400,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get all posts for listing
     if ($action === 'list') {
         try {
-            $stmt = $pdo->query("SELECT * FROM blog_posts ORDER BY created_at DESC");
+            // TRI SYNCHRONISÉ AVEC LE FRONTEND : Exactement la même logique que blog.php
+            // Tri rigoureux : les articles récemment mis à jour ou marqués comme récents apparaissent en premier
+            $stmt = $pdo->query("SELECT * FROM blog_posts 
+                                ORDER BY 
+                                CASE 
+                                    WHEN updated_at > created_at THEN updated_at 
+                                    ELSE created_at 
+                                END DESC, 
+                                updated_at DESC, 
+                                created_at DESC, 
+                                id DESC");
             $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $message = "Erreur de base de données: " . $e->getMessage();
@@ -858,15 +862,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
-                        <div class="flex justify-end space-x-4">
+                        <!-- Backlinks Section -->
+                        <?php if ($action === 'edit' && $post): ?>
+                        <div class="mt-8 p-6 bg-gray-800 rounded-lg border border-purple-700">
+                            <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                                <i class="fas fa-external-link-alt mr-2 text-purple-400"></i>
+                                Gestion des Backlinks
+                            </h3>
+                            
+                            <div id="backlinks-container">
+                                <!-- Backlinks will be loaded here via AJAX -->
+                                <div class="text-center py-4">
+                                    <i class="fas fa-spinner fa-spin text-purple-400"></i>
+                                    <span class="text-gray-400 ml-2">Chargement des backlinks...</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Add new backlink form -->
+                            <div class="mt-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                <h4 class="text-lg font-semibold text-white mb-3">Ajouter un nouveau backlink</h4>
+                                <form id="add-backlink-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input type="hidden" id="content_type" value="blog">
+                                    <input type="hidden" id="content_id" value="<?php echo $post['id']; ?>">
+                                    
+                                    <div>
+                                        <label class="block text-gray-300 text-sm font-medium mb-1">URL *</label>
+                                        <input type="url" id="backlink_url" required class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-purple-500 focus:outline-none" placeholder="https://exemple.com/article">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-300 text-sm font-medium mb-1">Type</label>
+                                        <select id="backlink_type" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-purple-500 focus:outline-none">
+                                            <option value="reference">Référence</option>
+                                            <option value="source">Source</option>
+                                            <option value="inspiration">Inspiration</option>
+                                            <option value="resource">Ressource</option>
+                                            <option value="study">Étude</option>
+                                            <option value="article">Article</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="md:col-span-2">
+                                        <label class="block text-gray-300 text-sm font-medium mb-1">Titre (optionnel)</label>
+                                        <input type="text" id="backlink_title" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-purple-500 focus:outline-none" placeholder="Titre du lien (sera extrait automatiquement si vide)">
+                                    </div>
+                                    
+                                    <div class="md:col-span-2">
+                                        <label class="block text-gray-300 text-sm font-medium mb-1">Description (optionnelle)</label>
+                                        <textarea id="backlink_description" rows="2" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-purple-500 focus:outline-none" placeholder="Description du lien (sera extraite automatiquement si vide)"></textarea>
+                                    </div>
+                                    
+                                    <div class="md:col-span-2 flex justify-end">
+                                        <button type="submit" class="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded-md transition duration-300">
+                                            <i class="fas fa-plus mr-2"></i>Ajouter le backlink
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="flex justify-end space-x-4 mt-6">
                             <a href="blog.php" class="px-6 py-3 rounded-full border border-purple-600 text-white font-medium hover:bg-purple-900 transition duration-300">
                                 Annuler
                             </a>
                             <button type="submit" name="save_post" class="btn-magic px-6 py-3 rounded-full text-white font-medium">
                                 <?php echo $action === 'edit' ? 'Mettre à jour' : 'Publier'; ?> l'article
                             </button>
-
-                    </div>
+                        </div>
                 </form>
             <?php endif; ?>
         </main>
@@ -1004,6 +1067,182 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function closeDeleteModal() {
             document.getElementById('deleteModal').classList.add('hidden');
         }
+        
+        // Backlinks management
+        <?php if ($action === 'edit' && $post): ?>
+        // Load backlinks when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBacklinks();
+        });
+        
+        // Load backlinks via AJAX
+        function loadBacklinks() {
+            const contentType = document.getElementById('content_type').value;
+            const contentId = document.getElementById('content_id').value;
+            
+            fetch('includes/ajax_backlinks.php?action=get&content_type=' + contentType + '&content_id=' + contentId)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('backlinks-container');
+                    
+                    if (data.success && data.backlinks.length > 0) {
+                        let html = '<div class="space-y-3">';
+                        data.backlinks.forEach(backlink => {
+                            const typeColors = {
+                                'reference': '#3b82f6',
+                                'source': '#10b981',
+                                'inspiration': '#f59e0b',
+                                'resource': '#8b5cf6',
+                                'study': '#ef4444',
+                                'article': '#06b6d4'
+                            };
+                            
+                            const typeLabels = {
+                                'reference': 'Référence',
+                                'source': 'Source',
+                                'inspiration': 'Inspiration',
+                                'resource': 'Ressource',
+                                'study': 'Étude',
+                                'article': 'Article'
+                            };
+                            
+                            const color = typeColors[backlink.type] || '#6b7280';
+                            const label = typeLabels[backlink.type] || backlink.type;
+                            
+                            html += `
+                                <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-1 rounded text-xs font-medium" style="background-color: ${color}20; color: ${color};">
+                                                ${label}
+                                            </span>
+                                            <span class="text-gray-400 text-sm">${backlink.domain}</span>
+                                        </div>
+                                        <button onclick="deleteBacklink(${backlink.id})" class="text-red-400 hover:text-red-300 text-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    <h5 class="text-white font-medium mb-1">
+                                        <a href="${backlink.url}" target="_blank" rel="noopener" class="hover:text-purple-400 transition-colors">
+                                            ${backlink.title}
+                                            <i class="fas fa-external-link-alt text-xs ml-1"></i>
+                                        </a>
+                                    </h5>
+                                    ${backlink.description ? `<p class="text-gray-400 text-sm">${backlink.description}</p>` : ''}
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<div class="text-center py-4 text-gray-400">Aucun backlink configuré pour cet article.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des backlinks:', error);
+                    document.getElementById('backlinks-container').innerHTML = '<div class="text-center py-4 text-red-400">Erreur lors du chargement des backlinks.</div>';
+                });
+        }
+        
+        // Add new backlink
+        document.getElementById('add-backlink-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('action', 'add');
+            formData.append('content_type', document.getElementById('content_type').value);
+            formData.append('content_id', document.getElementById('content_id').value);
+            formData.append('url', document.getElementById('backlink_url').value);
+            formData.append('type', document.getElementById('backlink_type').value);
+            formData.append('title', document.getElementById('backlink_title').value);
+            formData.append('description', document.getElementById('backlink_description').value);
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Ajout en cours...';
+            submitBtn.disabled = true;
+            
+            fetch('includes/ajax_backlinks.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset form
+                    this.reset();
+                    // Reload backlinks
+                    loadBacklinks();
+                    // Show success message
+                    showMessage('Backlink ajouté avec succès!', 'success');
+                } else {
+                    showMessage(data.message || 'Erreur lors de l\'ajout du backlink', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showMessage('Erreur lors de l\'ajout du backlink', 'error');
+            })
+            .finally(() => {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+        
+        // Delete backlink
+        function deleteBacklink(backlinkId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce backlink ?')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('id', backlinkId);
+            
+            fetch('includes/ajax_backlinks.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadBacklinks();
+                    showMessage('Backlink supprimé avec succès!', 'success');
+                } else {
+                    showMessage(data.message || 'Erreur lors de la suppression', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showMessage('Erreur lors de la suppression du backlink', 'error');
+            });
+        }
+        
+        // Show message function
+        function showMessage(message, type) {
+            // Create message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fixed top-4 right-4 p-4 rounded-lg z-50 ${type === 'success' ? 'bg-green-900 bg-opacity-90 text-green-300' : 'bg-red-900 bg-opacity-90 text-red-300'}`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // Add to page
+            document.body.appendChild(messageDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+        <?php endif; ?>
     </script>
 </body>
 </html>

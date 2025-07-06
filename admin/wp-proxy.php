@@ -1,13 +1,11 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 // Disable error reporting for production
 error_reporting(0);
 
 // Enable error reporting for debugging
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
-
-// WordPress API Proxy Script
+// // // // WordPress API Proxy Script
 // This script helps diagnose and proxy WordPress API requests
 
 // Security: Check admin login
@@ -75,8 +73,7 @@ curl_close($ch);
 
 // Log detailed error information
 if ($curl_error) {
-    error_log("WordPress Proxy Error: $curl_error");
-}
+    }
 
 // Set response headers
 header('Content-Type: application/json');

@@ -1,5 +1,25 @@
 <?php
+// Include bootstrap file for secure configuration and error handling
+require_once 'bootstrap.php';
 session_start();
+
+// Include security functions
+require_once 'includes/security_functions.php';
+
+// Set secure headers
+set_secure_headers();
+
+// Check if session is valid
+if (!is_session_valid()) {
+    // Clear all session variables
+    $_SESSION = array();
+    
+    // Destroy the session
+    session_destroy();
+    
+    // Start a new session
+    session_start();
+}
 
 // Check if user is already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
@@ -18,26 +38,44 @@ create_default_admin();
 // Process login form submission
 $error_message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST["username"] ?? "";
-    $password = $_POST["password"] ?? "";
-    
-    // Authenticate user
-    $auth_result = authenticate_user($username, $password);
-    
-    if ($auth_result['status']) {
-        // Set session variables
-        $_SESSION['admin_logged_in'] = true;
-        $_SESSION['admin_username'] = $username;
-        $_SESSION['admin_user_id'] = $auth_result['user']['id'];
-        $_SESSION['admin_user_role'] = $auth_result['user']['role'];
-        
-        // Redirect to dashboard
-        header("Location: dashboard.php");
-        exit;
+    // Verify CSRF token
+    if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+        $error_message = "Erreur de sécurité. Veuillez réessayer.";
     } else {
-        $error_message = $auth_result['message'];
+        // Check rate limiting (5 attempts per 5 minutes)
+        $ip_address = $_SERVER['REMOTE_ADDR'];
+        if (!check_rate_limit($ip_address, 5, 300)) {
+            $error_message = "Trop de tentatives de connexion. Veuillez réessayer dans quelques minutes.";
+        } else {
+            // Sanitize inputs
+            $username = sanitize_input($_POST["username"] ?? "");
+            $password = $_POST["password"] ?? ""; // Don't sanitize password
+            
+            // Authenticate user
+            $auth_result = authenticate_user($username, $password);
+            
+            if ($auth_result['status']) {
+                // Regenerate session ID to prevent session fixation
+                regenerate_session();
+                
+                // Set session variables
+                $_SESSION['admin_logged_in'] = true;
+                $_SESSION['admin_username'] = $username;
+                $_SESSION['admin_user_id'] = $auth_result['user']['id'];
+                $_SESSION['admin_user_role'] = $auth_result['user']['role'];
+                
+                // Redirect to dashboard
+                header("Location: dashboard.php");
+                exit;
+            } else {
+                $error_message = $auth_result['message'];
+            }
+        }
     }
 }
+
+// Generate CSRF token
+$csrf_token = generate_csrf_token();
 ?>
 
 <!DOCTYPE html>
@@ -105,14 +143,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php endif; ?>
         
         <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" class="space-y-6">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            
             <div>
                 <label for="username" class="block text-gray-300 mb-2">Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom d'utilisateur">
+                <input type="text" id="username" name="username" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre nom d'utilisateur" autocomplete="username">
             </div>
             
             <div>
                 <label for="password" class="block text-gray-300 mb-2">Mot de passe</label>
-                <input type="password" id="password" name="password" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre mot de passe">
+                <input type="password" id="password" name="password" required class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-purple-800 focus:border-pink-500 focus:outline-none text-white transition duration-300" placeholder="Entrez votre mot de passe" autocomplete="current-password">
             </div>
             
             <button type="submit" class="w-full btn-magic px-6 py-4 rounded-full text-white font-bold text-lg">
